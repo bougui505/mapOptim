@@ -147,6 +147,7 @@ if __name__ == '__main__':
         anchors = get_coords(args.anchors, 'anchors', device)
     cmap_ref = numpy.load(args.cmap)
     cmap_ref = torch.from_numpy(cmap_ref)
+    cmap_ref = cmap_ref.float()
     cmap_ref = cmap_ref.to(device)
     cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
