@@ -119,6 +119,9 @@ if __name__ == '__main__':
     import os
     import argparse
 
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Running on {device}")
+
     parser = argparse.ArgumentParser(description='Model optimization based on contact map')
     parser.add_argument('--pdb', type=str, help='Protein structure to optimize')
     parser.add_argument('--cmap', type=str, help='npy file of the contact map')
@@ -129,7 +132,6 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit()
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if args.pdbref is not None:
         coords_ref = get_coords(args.pdbref, 'ref', device=device)
         cmap_ref = get_cmap(coords_ref, device=device)
