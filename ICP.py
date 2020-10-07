@@ -143,7 +143,7 @@ def find_initial_alignment(coords, coords_ref, fsize=30):
                 rmsd_min = rmsd
                 i_best, j_best = i, j
                 R_best, t_best = R, t
-    print(rmsd_min, i_best, j_best)
+    # print(rmsd_min, i_best, j_best)
     return R_best, t_best
 
 
