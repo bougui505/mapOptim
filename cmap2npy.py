@@ -48,6 +48,11 @@ else:
 n = len(sel)
 cmap = numpy.eye(n)
 mapping = dict(zip(sel, range(len(sel))))
+# First diagonal:
+for r in sel:
+    if r + 1 in sel:
+        cmap[mapping[r], mapping[r + 1]] = 1.
+        cmap[mapping[r + 1], mapping[r]] = 1.
 for d in data:
     r1, r2, p = d
     if r1 in sel and r2 in sel:
@@ -57,12 +62,6 @@ for d in data:
         ind2 = mapping[r2]
         cmap[ind1, ind2] = p
         cmap[ind2, ind1] = p
-    if r1 in sel and r1 + 1 in sel:
-        cmap[mapping[r1], mapping[r1 + 1]] = 1.
-        cmap[mapping[r1 + 1], mapping[r1]] = 1.
-    if r2 in sel and r2 + 1 in sel:
-        cmap[mapping[r2], mapping[r2 + 1]] = 1.
-        cmap[mapping[r2 + 1], mapping[r2]] = 1.
 print(f'Contact map shape: {cmap.shape}')
 outbasename = os.path.splitext(args.cmap)[0]
 numpy.save(f'{outbasename}.npy', cmap)
