@@ -124,7 +124,7 @@ if __name__ == '__main__':
     parser.add_argument('--cmap', type=str, help='npy file of the contact map')
     parser.add_argument('--pdbref', type=str, help='Generate a npy file with the contact map build from the pdb and exit')
     args = parser.parse_args()
-    
+
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit()
@@ -137,7 +137,7 @@ if __name__ == '__main__':
         sys.exit()
     coords_in = get_coords(args.pdb, 'mod', device)
     cmap_ref = numpy.load(args.cmap)
-    cmap_ref = torch.from_numpy(cmap_ref)
+    cmap_ref = torch.from_numpy(cmap_ref, device=device)
     cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
     coords_out = minimize(coords_in, cmap_ref, device, 10000)
