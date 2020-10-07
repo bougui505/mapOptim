@@ -171,7 +171,7 @@ def icp(coords, coords_ref, device, n_iter, dist_thr=4.):
 
 if __name__ == '__main__':
     import pymol.cmd as cmd
-    import mapoptim
+    import optimap
     import numpy as np  # For doctest
     import doctest
     import os
@@ -189,8 +189,8 @@ if __name__ == '__main__':
                         default=100)
     args = parser.parse_args()
 
-    coords_ref = mapoptim.get_coords(args.pdb2, 'ref', device=device)
-    coords_in = mapoptim.get_coords(args.pdb1, 'mod', device)
+    coords_ref = optimap.get_coords(args.pdb2, 'ref', device=device)
+    coords_in = optimap.get_coords(args.pdb1, 'mod', device)
     # Try to align
     # R, t = find_rigid_alignment(coords_in, coords_ref)
     # coords_out = transform(coords_in, R, t)

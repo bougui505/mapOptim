@@ -1,1 +1,1 @@
-from . import mapoptim
+from . import optimap
