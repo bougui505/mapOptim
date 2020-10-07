@@ -171,13 +171,13 @@ def icp(coords, coords_ref, device, n_iter, dist_thr=4.):
 
 if __name__ == '__main__':
     import pymol.cmd as cmd
-    import mapalign
+    import mapoptim
     import numpy as np
     import doctest
     doctest.testmod()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    coords_ref = mapalign.get_coords('map_to_model_5v6p_8637_.pdb', 'ref', device=device)
-    coords_in = mapalign.get_coords('out.pdb', 'mod', device)
+    coords_ref = mapoptim.get_coords('map_to_model_5v6p_8637_.pdb', 'ref', device=device)
+    coords_in = mapoptim.get_coords('out.pdb', 'mod', device)
     # find_initial_alignment(coords_in, coords_ref)
     # sys.exit()
     # Try to align

@@ -116,18 +116,32 @@ def minimize(coords, cmap_ref, device, n_iter, coords_ref=None):
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
+    import os
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Model optimization based on contact map')
+    parser.add_argument('--pdb', type=str, help='Protein structure to optimize')
+    parser.add_argument('--cmap', type=str, help='npy file of the contact map')
+    parser.add_argument('--pdbref', type=str, help='Generate a npy file with the contact map build from the pdb and exit')
+    args = parser.parse_args()
+    
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit()
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    coords_ref = get_coords('5v6p_.pdb', 'ref', device=device)
-    cmap_ref = get_cmap(coords_ref, device=device)
-    # cmap_ref[cmap_ref < 0.5] = 0.
-    # cmap_ref[cmap_ref >= 0.5] = 1.
-    coords_in = get_coords('map_to_model_5v6p_8637_.pdb', 'mod', device)
+    if args.pdbref is not None:
+        coords_ref = get_coords(args.pdbref, 'ref', device=device)
+        cmap_ref = get_cmap(coords_ref, device=device)
+        numpy.save(f'{os.path.splitext(args.pdbref)[0]}_cmap.npy', cmap_ref)
+        sys.exit()
+    coords_in = get_coords(args.pdb, 'mod', device)
+    cmap_ref = numpy.load(args.cmap)
+    cmap_ref = torch.from_numpy(cmap_ref)
     cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
     coords_out = minimize(coords_in, cmap_ref, device, 10000)
     coords_out = ICP.icp(coords_out, coords_in, device, 10)
-    rmsd = torch.sqrt(((coords_out - coords_ref)**2).sum(axis=1).mean())
-    print(f'RMSD to deposited structure: {rmsd}')
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     cmd.load_coords(coords_out, 'mod')
