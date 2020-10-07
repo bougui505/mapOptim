@@ -140,7 +140,7 @@ if __name__ == '__main__':
     coords_in = get_coords(args.pdb, 'mod', device)
     cmap_ref = numpy.load(args.cmap)
     cmap_ref = torch.from_numpy(cmap_ref)
-    cmap_ref.to(device)
+    cmap_ref = cmap_ref.to(device)
     cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
     coords_out = minimize(coords_in, cmap_ref, device, 10000)
