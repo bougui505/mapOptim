@@ -172,24 +172,35 @@ def icp(coords, coords_ref, device, n_iter, dist_thr=4.):
 if __name__ == '__main__':
     import pymol.cmd as cmd
     import mapoptim
-    import numpy as np
+    import numpy as np  # For doctest
     import doctest
+    import os
+    import argparse
+
     doctest.testmod()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    coords_ref = mapoptim.get_coords('map_to_model_5v6p_8637_.pdb', 'ref', device=device)
-    coords_in = mapoptim.get_coords('out.pdb', 'mod', device)
-    # find_initial_alignment(coords_in, coords_ref)
-    # sys.exit()
+
+    parser = argparse.ArgumentParser(description='Iterative Closest Point algorithm for structural alignment')
+    parser.add_argument('--pdb1', type=str, help='First protein structure (mobile)',
+                        required=True)
+    parser.add_argument('--pdb2', type=str, help='Second protein structure (reference)',
+                        required=True)
+    parser.add_argument('--niter', type=int, help='Number of iterations (default: 100)',
+                        default=100)
+    args = parser.parse_args()
+
+    coords_ref = mapoptim.get_coords(args.pdb2, 'ref', device=device)
+    coords_in = mapoptim.get_coords(args.pdb1, 'mod', device)
     # Try to align
-    R, t = find_rigid_alignment(coords_in, coords_ref)
-    coords_out = transform(coords_in, R, t)
-    rmsd = get_RMSD(coords_out, coords_ref)
-    print(f'RMSD for rigid alignment: {rmsd}')
-    coords_out = coords_out.cpu().detach().numpy()
-    cmd.load_coords(coords_out, 'mod')
-    cmd.save('out_align.pdb', selection='mod')
+    # R, t = find_rigid_alignment(coords_in, coords_ref)
+    # coords_out = transform(coords_in, R, t)
+    # rmsd = get_RMSD(coords_out, coords_ref)
+    # print(f'RMSD for rigid alignment: {rmsd}')
+    # coords_out = coords_out.cpu().detach().numpy()
+    # cmd.load_coords(coords_out, 'mod')
+    # cmd.save('out_align.pdb', selection='mod')
     # Try the ICP
-    coords_out = icp(coords_in, coords_ref, device, 100)
+    coords_out = icp(coords_in, coords_ref, device, args.niter)
     coords_out = coords_out.cpu().detach().numpy()
     cmd.load_coords(coords_out, 'mod')
-    cmd.save('out_icp.pdb', selection='mod')
+    cmd.save(f'{os.path.splitext(args.pdb1)[0]}_icp.pdb', selection='mod')
