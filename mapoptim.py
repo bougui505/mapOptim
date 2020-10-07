@@ -124,6 +124,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Model optimization based on contact map')
     parser.add_argument('--pdb', type=str, help='Protein structure to optimize')
+    parser.add_argument('--anchors', type=str, help='PDB file containing the coordinates to anchor the model on. If not given, the pdb file given with the --pdb option is taken.')
     parser.add_argument('--cmap', type=str, help='npy file of the contact map')
     parser.add_argument('--pdbref', type=str, help='Generate a npy file with the contact map build from the pdb and exit')
     args = parser.parse_args()
@@ -138,13 +139,17 @@ if __name__ == '__main__':
         numpy.save(f'{os.path.splitext(args.pdbref)[0]}_cmap.npy', cmap_ref)
         sys.exit()
     coords_in = get_coords(args.pdb, 'mod', device)
+    if args.anchors is None:
+        anchors = torch.clone(coords_in)
+    else:
+        anchors = get_coords(args.anchors, 'anchors', device)
     cmap_ref = numpy.load(args.cmap)
     cmap_ref = torch.from_numpy(cmap_ref)
     cmap_ref = cmap_ref.to(device)
     cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
     coords_out = minimize(coords_in, cmap_ref, device, 10000)
-    coords_out = ICP.icp(coords_out, coords_in, device, 10)
+    coords_out = ICP.icp(coords_out, anchors, device, 10)
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     cmd.load_coords(coords_out, 'mod')
