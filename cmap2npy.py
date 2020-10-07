@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser(description='Convert a Casp contact map to a npy file. See: https://predictioncenter.org/casp14/index.cgi?page=format#RR for the input file format')
 parser.add_argument('--cmap', type=str, help='CASP contact map file', required=True)
 parser.add_argument('--sel', type=str, help='Residue selection for the contact map (e.g.: 10-24+30-65+70-94)')
+parser.add_argument('--ss', type=str, help='Secondary structure prediction file to fill 4-first diagonal (optional). The format is e.g.: 3 I H   0.985 0.000 0.014, with the resid, resname, SS-type, H-propensity, E-propensity and C-propensity as in DSSP')
 args = parser.parse_args()
 
 
@@ -31,6 +32,14 @@ def parse_selection(selection_string):
         stop = int(stop)
         resids.extend(numpy.arange(start, stop + 1))
     return resids
+
+
+def read_ss(infile):
+    data = numpy.genfromtxt(infile, dtype=str)
+    resids = numpy.int_(data[:, 0])
+    hec = numpy.float_(data[:, 3:])  # propensity for H, E and C class as in DSSP
+    ss_mapping = dict(zip(resids, hec))
+    return ss_mapping
 
 
 col1 = numpy.genfromtxt(args.cmap, usecols=(0,), dtype=str)
@@ -53,6 +62,14 @@ for r in sel:
     if r + 1 in sel:
         cmap[mapping[r], mapping[r + 1]] = 1.
         cmap[mapping[r + 1], mapping[r]] = 1.
+if args.ss is not None:
+    ss = read_ss(args.ss)
+    for r in sel:
+        for rnext in [r + 2, r + 3, r + 4]:
+            if rnext in sel:
+                cmap[mapping[r], mapping[rnext]] = ss[rnext][0]
+                cmap[mapping[rnext], mapping[r]] = ss[rnext][0]
+
 for d in data:
     r1, r2, p = d
     if r1 in sel and r2 in sel:
