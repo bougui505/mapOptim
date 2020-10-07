@@ -126,6 +126,8 @@ if __name__ == '__main__':
     parser.add_argument('--pdb', type=str, help='Protein structure to optimize')
     parser.add_argument('--anchors', type=str, help='PDB file containing the coordinates to anchor the model on. If not given, the pdb file given with the --pdb option is taken.')
     parser.add_argument('--cmap', type=str, help='npy file of the contact map')
+    parser.add_argument('--niter', type=int, help='Number of iteration for optimizer (default: 10000)',
+                        default=10000)
     parser.add_argument('--pdbref', type=str, help='Generate a npy file with the contact map build from the pdb and exit')
     args = parser.parse_args()
 
@@ -148,7 +150,7 @@ if __name__ == '__main__':
     cmap_ref = cmap_ref.to(device)
     cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
-    coords_out = minimize(coords_in, cmap_ref, device, 10000)
+    coords_out = minimize(coords_in, cmap_ref, device, args.niter)
     coords_out = ICP.icp(coords_out, anchors, device, 10)
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
