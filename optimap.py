@@ -122,7 +122,7 @@ def minimize(coords, cmap_ref, device, n_iter, coords_ref=None):
                 print_progress(f'{t+1}/{n_iter}: L={loss}, rmsd={rmsd}')
             else:
                 print_progress(f'{t+1}/{n_iter}: L={loss}')
-    sys.stdout.write('\n')
+    print("---")
     # P_norm = normalize_P(P, beta=betas[t])
     numpy.save('permutation.npy', P.cpu().detach().numpy())
     return coords_pred
