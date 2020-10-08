@@ -17,7 +17,7 @@ def print_progress(instr):
     sys.stdout.flush()
 
 
-def get_cmap(coords, device, threshold=8., dist_ca=3.8, sigma_ca=1.):
+def get_cmap(coords, device, threshold=8., dist_ca=3.8, sigma_ca=3.):
     """
     - dist_ca: C-alpha - C-alpha distance
     """
