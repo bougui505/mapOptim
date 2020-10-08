@@ -20,7 +20,7 @@ cmaps = [np.load(npyfile) for npyfile in npyfiles]
 lengths = [cmap.shape[0] for cmap in cmaps]
 total_length = np.sum(lengths)
 
-cmap_cat = np.zeros((total_length, total_length))
+cmap_cat = - np.ones((total_length, total_length))
 ind = 0
 for cmap in cmaps:
     n = cmap.shape[0]
