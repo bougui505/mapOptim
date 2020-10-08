@@ -181,11 +181,19 @@ def lstsq_fit(coords, coords_ref, dist_thr=1.9):
     """
     n = coords.shape[0]
     coords_out = torch.clone(coords)
+    device = coords_out.device
+    coords_out = coords_out.to('cpu')
     assignment, sel = assign_anchors(coords_ref, coords, dist_thr=dist_thr)
+    # Not yet implemented on gpu so go to cpu:
+    if coords_ref.is_cuda:
+        coords_ref = coords_ref.to('cpu')
+    if coords.is_cuda:
+        coords = coords.to('cpu')
     X, _ = torch.lstsq(coords_ref[assignment].T, coords[sel].T)
     coords_out[sel] = (coords[sel].T.mm(X[:n])).T
     n_assigned = len(sel)
     print(f"lstsq_fit: n_assigned: {n_assigned}/{n} at less than {dist_thr} Å")
+    coords_out = coords_out.to(device)
     return coords_out
 
 
