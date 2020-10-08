@@ -167,7 +167,8 @@ if __name__ == '__main__':
     cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
     coords_out = torch.clone(coords_in)
-    for i in range(2):
+    for i in range(10):
+        print(f'################ Iteration {i} ################')
         coords_out = minimize(coords_out, cmap_ref, device, args.niter)
         coords_out = ICP.icp(coords_out, anchors, device, 10, do_lstsq_fit=True)
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
