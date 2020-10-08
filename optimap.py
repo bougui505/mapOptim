@@ -17,10 +17,18 @@ def print_progress(instr):
     sys.stdout.flush()
 
 
-def get_cmap(coords, device, threshold=8.):
+def get_cmap(coords, device, threshold=8., dist_ca=3.8, sigma_ca=.1):
+    """
+    - dist_ca: C-alpha - C-alpha distance
+    """
+    n = coords.shape[0]
+    A = torch.meshgrid(torch.arange(n), torch.arange(n))
+    dist_to_diag = torch.abs(A[1] - A[0])
     pdist = torch.cdist(coords, coords)
     S = torch.nn.Sigmoid()
-    cmap = S(threshold - pdist)
+    cmap_S = S(threshold - pdist)
+    cmap_G = torch.exp(-(pdist - dist_ca)**2 / (2 * sigma_ca**2))
+    cmap = torch.where(dist_to_diag == 1, cmap_G, cmap_S)
     cmap = cmap.to(device)
     return cmap
 
