@@ -217,7 +217,7 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('--niter', type=int, help='Number of iterations (default: 100)',
                         default=100)
-    parser.add_argument('--flex', type=float, help='Distance threshold for flexible fitting using least square (default=1 )', default=1.)
+    parser.add_argument('--flex', type=float, help='Distance threshold for flexible fitting using least square (default=0, no least square flexible fitting)', default=0.)
     args = parser.parse_args()
 
     coords_ref = optimap.get_coords(args.pdb2, 'ref', device=device)
