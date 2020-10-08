@@ -177,7 +177,7 @@ def icp(coords, coords_ref, device, n_iter, dist_thr=3.8, lstsq_fit_thr=0.):
     return coords_out
 
 
-def lstsq_fit(coords, coords_ref, dist_thr=1.9):
+def lstsq_fit(coords, coords_ref, dist_thr=1.9, ca_dist=3.8):
     """
     Perform a least square fit of coords on coords_ref
     """
@@ -191,6 +191,16 @@ def lstsq_fit(coords, coords_ref, dist_thr=1.9):
         coords_ref = coords_ref.to('cpu')
     if coords.is_cuda:
         coords = coords.to('cpu')
+    # Topology
+    anchors = coords_ref[assignment]
+    pdist = torch.cdist(anchors, anchors)
+    sequential = torch.diagonal(pdist, offset=1)
+    sigma_ca = 0.1
+    topology = torch.exp(-(sequential - ca_dist) / (2 * sigma_ca**2))
+    toposel = torch.nonzero(topology > .5, as_tuple=True)[0]
+    sel = sel[toposel]
+    assignment = assignment[toposel]
+    ##########
     X, _ = torch.lstsq(coords_ref[assignment].T, coords[sel].T)
     coords_out[sel] = (coords[sel].T.mm(X[:n])).T
     n_assigned = len(sel)

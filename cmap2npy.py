@@ -57,18 +57,6 @@ else:
 n = len(sel)
 cmap = numpy.eye(n)
 mapping = dict(zip(sel, range(len(sel))))
-# First diagonal:
-for r in sel:
-    if r + 1 in sel:
-        cmap[mapping[r], mapping[r + 1]] = 1.
-        cmap[mapping[r + 1], mapping[r]] = 1.
-if args.ss is not None:
-    ss = read_ss(args.ss)
-    for r in sel:
-        for rnext in [r + 2, r + 3, r + 4]:
-            if rnext in sel:
-                cmap[mapping[r], mapping[rnext]] = ss[rnext][0]
-                cmap[mapping[rnext], mapping[r]] = ss[rnext][0]
 
 for d in data:
     r1, r2, p = d
@@ -79,9 +67,31 @@ for d in data:
         ind2 = mapping[r2]
         cmap[ind1, ind2] = p
         cmap[ind2, ind1] = p
+
+# alpha-helices prediction
+if args.ss is not None:
+    ss = read_ss(args.ss)
+    for r in sel:
+        for rnext in [r + 2, r + 3, r + 4]:
+            if rnext in sel:
+                cmap[mapping[r], mapping[rnext]] = ss[rnext][0]
+                cmap[mapping[rnext], mapping[r]] = ss[rnext][0]
+
+# First diagonal (topology):
+for r in sel:
+    if r + 1 in sel:
+        cmap[mapping[r], mapping[r + 1]] = 1.
+        cmap[mapping[r + 1], mapping[r]] = 1.
+    else:
+        ind = mapping[r]
+        if ind + 1 < n:
+            cmap[ind, ind + 1] = 0.
+            cmap[ind + 1, ind] = 0.
+
 print(f'Contact map shape: {cmap.shape}')
 outbasename = os.path.splitext(args.cmap)[0]
 numpy.save(f'{outbasename}.npy', cmap)
+numpy.save(f'{outbasename}.top.npy', cmap.diagonal(offset=1))
 plt.matshow(cmap)
 plt.colorbar()
 plt.savefig(f'{outbasename}.png')
