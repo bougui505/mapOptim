@@ -76,10 +76,10 @@ def anchor_loss(coords, anchors):
 def cmap_loss(cmap_pred, cmap_true, w0=0.05):
     cmap_pred = cmap_pred.flatten()
     cmap_true = cmap_true.flatten()
-    mask = (cmap_true < 0.)
-    mask = torch.nonzero(mask, as_tuple=True)[0]
-    cmap_pred = cmap_pred[mask]
-    cmap_true = cmap_true[mask]
+    sel = (cmap_true > 0.)
+    sel = torch.nonzero(sel, as_tuple=True)[0]
+    cmap_pred = cmap_pred[sel]
+    cmap_true = cmap_true[sel]
     bceloss = torch.nn.BCELoss(weight=(cmap_true + w0 * torch.ones_like(cmap_true)))
     # bceloss = torch.nn.BCELoss(weight=cmap_true)
     output = bceloss(cmap_pred, cmap_true)
