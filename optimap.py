@@ -112,11 +112,13 @@ def minimize(coords, cmap_ref, device, n_iter, do_normalize_P=False, coords_ref=
     for t in range(n_iter):
         optimizer.zero_grad()
         if do_normalize_P:
-            P = normalize_P(P, beta=0.1)
-        coords_pred = permute(coords, P)
+            P_norm = normalize_P(P, beta=0.1)
+        else:
+            P_norm = P
+        coords_pred = permute(coords, P_norm)
         cmap_pred = get_cmap(coords_pred, device=device)
         loss = cmap_loss(cmap_pred, cmap_ref)
-        loss.backward(retain_graph=True)
+        loss.backward()
         optimizer.step()
         if t % 100 == 99:
             if coords_ref is not None:
@@ -126,8 +128,7 @@ def minimize(coords, cmap_ref, device, n_iter, do_normalize_P=False, coords_ref=
                 print_progress(f'{t+1}/{n_iter}: L={loss}')
     sys.stdout.write('\n')
     print("---")
-    # P_norm = normalize_P(P, beta=betas[t])
-    numpy.save('permutation.npy', P.cpu().detach().numpy())
+    numpy.save('permutation.npy', P_norm.cpu().detach().numpy())
     return coords_pred
 
 
