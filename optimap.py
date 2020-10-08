@@ -28,7 +28,9 @@ def get_cmap(coords, device, threshold=8., dist_ca=3.8, sigma_ca=.1):
     S = torch.nn.Sigmoid()
     cmap_S = S(threshold - pdist)
     cmap_G = torch.exp(-(pdist - dist_ca)**2 / (2 * sigma_ca**2))
-    cmap = torch.where(dist_to_diag == 1, cmap_G, cmap_S)
+    mask = dist_to_diag == 1
+    mask = mask.to(device)
+    cmap = torch.where(mask, cmap_G, cmap_S)
     cmap = cmap.to(device)
     return cmap
 
