@@ -76,10 +76,6 @@ def anchor_loss(coords, anchors):
 def cmap_loss(cmap_pred, cmap_true, w0=0.05):
     cmap_pred = cmap_pred.flatten()
     cmap_true = cmap_true.flatten()
-    sel = (cmap_true > 0.)
-    sel = torch.nonzero(sel, as_tuple=True)[0]
-    cmap_pred = cmap_pred[sel]
-    cmap_true = cmap_true[sel]
     bceloss = torch.nn.BCELoss(weight=(cmap_true + w0 * torch.ones_like(cmap_true)))
     # bceloss = torch.nn.BCELoss(weight=cmap_true)
     output = bceloss(cmap_pred, cmap_true)
@@ -171,7 +167,7 @@ if __name__ == '__main__':
     cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
     coords_out = torch.clone(coords_in)
-    for i in range(1):
+    for i in range(10):
         print(f'################ Iteration {i+1} ################')
         coords_out = minimize(coords_out, cmap_ref, device, args.niter)
         coords_out = ICP.icp(coords_out, anchors, device, 10, lstsq_fit_thr=1.)
