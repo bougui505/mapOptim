@@ -116,7 +116,7 @@ def minimize(coords, cmap_ref, device, n_iter, do_normalize_P=False, coords_ref=
         coords_pred = permute(coords, P)
         cmap_pred = get_cmap(coords_pred, device=device)
         loss = cmap_loss(cmap_pred, cmap_ref)
-        loss.backward()
+        loss.backward(retain_graph=True)
         optimizer.step()
         if t % 100 == 99:
             if coords_ref is not None:
