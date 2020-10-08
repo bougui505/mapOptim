@@ -17,7 +17,7 @@ def print_progress(instr):
     sys.stdout.flush()
 
 
-def get_cmap(coords, device, threshold=8., ca_switch=False, dist_ca=3.8, sigma_ca=3.):
+def get_cmap(coords, device, threshold=8., ca_switch=True, dist_ca=3.8, sigma_ca=3.):
     """
     - ca_switch: if True, apply a different distance threshold for consecutive CA
     - dist_ca: C-alpha - C-alpha distance
