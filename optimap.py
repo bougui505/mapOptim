@@ -170,7 +170,7 @@ if __name__ == '__main__':
     for i in range(10):
         print(f'################ Iteration {i+1} ################')
         coords_out = minimize(coords_out, cmap_ref, device, args.niter)
-        coords_out = ICP.icp(coords_out, anchors, device, 10, do_lstsq_fit=True)
+        coords_out = ICP.icp(coords_out, anchors, device, 10, do_lstsq_fit=False)
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     cmd.load_coords(coords_out, 'mod')
