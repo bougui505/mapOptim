@@ -147,7 +147,7 @@ def find_initial_alignment(coords, coords_ref, fsize=30):
     return R_best, t_best
 
 
-def icp(coords, coords_ref, device, n_iter, dist_thr=4.):
+def icp(coords, coords_ref, device, n_iter, dist_thr=4., do_lstsq_fit=False):
     """
     Iterative Closest Point
     """
@@ -157,15 +157,29 @@ def icp(coords, coords_ref, device, n_iter, dist_thr=4.):
     assignment, sel = assign_anchors(coords_ref, coords_out, dist_thr=dist_thr)
     rmsd = get_RMSD(coords_ref[assignment], coords_out[sel])
     n_assigned = len(sel)
-    print(f"Initial RMSD: {rmsd}; n_assigned: {n_assigned}/{len(coords)}")
+    print(f"Initial RMSD: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)}")
     for i in range(n_iter):
         assignment, sel = assign_anchors(coords_ref, coords_out, dist_thr=dist_thr)
         R, t = find_rigid_alignment(coords_out[sel], coords_ref[assignment])
         coords_out = transform(coords_out, R, t)
         rmsd = get_RMSD(coords_out[sel], coords_ref[assignment])
         n_assigned = len(sel)
-        print_progress(f'{i+1}/{n_iter}: {rmsd}; n_assigned: {n_assigned}/{len(coords)}             ')
+        print_progress(f'{i+1}/{n_iter}: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)}             ')
+    if do_lstsq_fit:
+        coords_out_ = lstsq_fit(coords_out[sel], coords_ref[assignment])
+        coords_out[sel] = coords_out_
+        rmsd = get_RMSD(coords_out[sel], coords_ref[assignment])
+        print(f'lstsq_fit: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)}')
     sys.stdout.write('\n')
+    return coords_out
+
+
+def lstsq_fit(coords, coords_ref):
+    """
+    Perform a least square fit of coords on coords_ref
+    """
+    X, _ = torch.lstsq(coords_ref, coords)
+    coords_out = coords.mm(X[:3])
     return coords_out
 
 

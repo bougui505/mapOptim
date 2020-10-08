@@ -166,7 +166,7 @@ if __name__ == '__main__':
     cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
     coords_out = minimize(coords_in, cmap_ref, device, args.niter)
-    coords_out = ICP.icp(coords_out, anchors, device, 10)
+    coords_out = ICP.icp(coords_out, anchors, device, 10, do_lstsq_fit=True)
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     cmd.load_coords(coords_out, 'mod')
