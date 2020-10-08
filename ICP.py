@@ -165,6 +165,7 @@ def icp(coords, coords_ref, device, n_iter, dist_thr=4., do_lstsq_fit=False):
         rmsd = get_RMSD(coords_out[sel], coords_ref[assignment])
         n_assigned = len(sel)
         print_progress(f'{i+1}/{n_iter}: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)}             ')
+    sys.stdout.write('\n')
     print("---")
     if do_lstsq_fit:
         coords_out_ = lstsq_fit(coords_out[sel], coords_ref[assignment])
