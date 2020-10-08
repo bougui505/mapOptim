@@ -147,7 +147,7 @@ def find_initial_alignment(coords, coords_ref, fsize=30):
     return R_best, t_best
 
 
-def icp(coords, coords_ref, device, n_iter, dist_thr=4., do_lstsq_fit=False):
+def icp(coords, coords_ref, device, n_iter, dist_thr=3.8, do_lstsq_fit=False):
     """
     Iterative Closest Point
     """
@@ -157,31 +157,35 @@ def icp(coords, coords_ref, device, n_iter, dist_thr=4., do_lstsq_fit=False):
     assignment, sel = assign_anchors(coords_ref, coords_out, dist_thr=dist_thr)
     rmsd = get_RMSD(coords_ref[assignment], coords_out[sel])
     n_assigned = len(sel)
-    print(f"Initial RMSD: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)}")
+    print(f"Initial RMSD: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)} at less than {dist_thr} Å")
     for i in range(n_iter):
         assignment, sel = assign_anchors(coords_ref, coords_out, dist_thr=dist_thr)
         R, t = find_rigid_alignment(coords_out[sel], coords_ref[assignment])
         coords_out = transform(coords_out, R, t)
         rmsd = get_RMSD(coords_out[sel], coords_ref[assignment])
         n_assigned = len(sel)
-        print_progress(f'{i+1}/{n_iter}: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)}             ')
+        print_progress(f'{i+1}/{n_iter}: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)} at less than {dist_thr} Å             ')
     sys.stdout.write('\n')
     print("---")
     if do_lstsq_fit:
-        coords_out_ = lstsq_fit(coords_out[sel], coords_ref[assignment])
-        coords_out[sel] = coords_out_
+        coords_out = lstsq_fit(coords_out, coords_ref)
         rmsd = get_RMSD(coords_out[sel], coords_ref[assignment])
-        print(f'lstsq_fit: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)}')
+        print(f'lstsq_fit: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)} at less than {dist_thr} Å')
     sys.stdout.write('\n')
     return coords_out
 
 
-def lstsq_fit(coords, coords_ref):
+def lstsq_fit(coords, coords_ref, dist_thr=1.9):
     """
     Perform a least square fit of coords on coords_ref
     """
-    X, _ = torch.lstsq(coords_ref, coords)
-    coords_out = coords.mm(X[:3])
+    n = coords.shape[0]
+    coords_out = torch.clone(coords)
+    assignment, sel = assign_anchors(coords_ref, coords, dist_thr=dist_thr)
+    X, _ = torch.lstsq(coords_ref[assignment].T, coords[sel].T)
+    coords_out[sel] = (coords[sel].T.mm(X[:n])).T
+    n_assigned = len(sel)
+    print(f"lstsq_fit: n_assigned: {n_assigned}/{n} at less than {dist_thr} Å")
     return coords_out
 
 
@@ -216,7 +220,7 @@ if __name__ == '__main__':
     # cmd.load_coords(coords_out, 'mod')
     # cmd.save('out_align.pdb', selection='mod')
     # Try the ICP
-    coords_out = icp(coords_in, coords_ref, device, args.niter)
+    coords_out = icp(coords_in, coords_ref, device, args.niter, do_lstsq_fit=True)
     coords_out = coords_out.cpu().detach().numpy()
     cmd.load_coords(coords_out, 'mod')
     cmd.save(f'{os.path.splitext(args.pdb1)[0]}_icp.pdb', selection='mod')
