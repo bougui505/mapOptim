@@ -22,9 +22,8 @@ def get_cmap(coords, device, threshold=8., dist_ca=3.8, sigma_ca=.1):
     - dist_ca: C-alpha - C-alpha distance
     """
     n = coords.shape[0]
-    A = torch.meshgrid(torch.arange(n), torch.arange(n))
+    A = torch.meshgrid(torch.arange(n, device=device), torch.arange(n, device=device))
     dist_to_diag = torch.abs(A[1] - A[0])
-    dist_to_diag = dist_to_diag.to(device)
     pdist = torch.cdist(coords, coords)
     S = torch.nn.Sigmoid()
     cmap_S = S(threshold - pdist)
