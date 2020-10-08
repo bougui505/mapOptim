@@ -160,9 +160,9 @@ def icp(coords, coords_ref, device, n_iter, dist_thr=3.8, lstsq_fit_thr=0.):
     n_assigned = len(sel)
     print(f"Initial RMSD: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)} at less than {dist_thr} Å")
     for i in range(n_iter):
-        assignment, sel = assign_anchors(coords_ref, coords_out, dist_thr=dist_thr)
         R, t = find_rigid_alignment(coords_out[sel], coords_ref[assignment])
         coords_out = transform(coords_out, R, t)
+        assignment, sel = assign_anchors(coords_ref, coords_out, dist_thr=dist_thr)
         rmsd = get_RMSD(coords_out[sel], coords_ref[assignment])
         n_assigned = len(sel)
         print_progress(f'{i+1}/{n_iter}: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)} at less than {dist_thr} Å             ')
@@ -170,6 +170,7 @@ def icp(coords, coords_ref, device, n_iter, dist_thr=3.8, lstsq_fit_thr=0.):
     print("---")
     if lstsq_fit_thr > 0.:
         coords_out = lstsq_fit(coords_out, coords_ref, dist_thr=lstsq_fit_thr)
+        assignment, sel = assign_anchors(coords_ref, coords_out, dist_thr=dist_thr)
         rmsd = get_RMSD(coords_out[sel], coords_ref[assignment])
         print(f'lstsq_fit: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)} at less than {dist_thr} Å')
     sys.stdout.write('\n')
@@ -229,7 +230,7 @@ if __name__ == '__main__':
     # cmd.load_coords(coords_out, 'mod')
     # cmd.save('out_align.pdb', selection='mod')
     # Try the ICP
-    coords_out = icp(coords_in, coords_ref, device, args.niter, do_lstsq_fit=True)
+    coords_out = icp(coords_in, coords_ref, device, args.niter, lstsq_fit_thr=1.)
     coords_out = coords_out.cpu().detach().numpy()
     cmd.load_coords(coords_out, 'mod')
     cmd.save(f'{os.path.splitext(args.pdb1)[0]}_icp.pdb', selection='mod')
