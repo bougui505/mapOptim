@@ -112,7 +112,7 @@ def minimize(coords, cmap_ref, device, n_iter, do_normalize_P=False, coords_ref=
     for t in range(n_iter):
         optimizer.zero_grad()
         if do_normalize_P:
-            P = normalize_P(P)
+            P = normalize_P(P, beta=0.1)
         coords_pred = permute(coords, P)
         cmap_pred = get_cmap(coords_pred, device=device)
         loss = cmap_loss(cmap_pred, cmap_ref)
