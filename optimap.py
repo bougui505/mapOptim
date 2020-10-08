@@ -103,7 +103,7 @@ def get_rmsd(A, B):
     return rmsd
 
 
-def minimize(coords, cmap_ref, device, n_iter, coords_ref=None):
+def minimize(coords, cmap_ref, device, n_iter, do_normalize_P=False, coords_ref=None):
     n = coords.shape[0]
     # Permutation matrix
     P = torch.eye(n, requires_grad=True, device=device)
@@ -111,6 +111,8 @@ def minimize(coords, cmap_ref, device, n_iter, coords_ref=None):
     n = coords.shape[0]
     for t in range(n_iter):
         optimizer.zero_grad()
+        if do_normalize_P:
+            P = normalize_P(P)
         coords_pred = permute(coords, P)
         cmap_pred = get_cmap(coords_pred, device=device)
         loss = cmap_loss(cmap_pred, cmap_ref)
