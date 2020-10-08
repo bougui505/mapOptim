@@ -217,6 +217,7 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('--niter', type=int, help='Number of iterations (default: 100)',
                         default=100)
+    parser.add_argument('--flex', type=float, help='Distance threshold for flexible fitting using least square (default=1 )', default=1.)
     args = parser.parse_args()
 
     coords_ref = optimap.get_coords(args.pdb2, 'ref', device=device)
@@ -230,7 +231,7 @@ if __name__ == '__main__':
     # cmd.load_coords(coords_out, 'mod')
     # cmd.save('out_align.pdb', selection='mod')
     # Try the ICP
-    coords_out = icp(coords_in, coords_ref, device, args.niter, lstsq_fit_thr=1.)
+    coords_out = icp(coords_in, coords_ref, device, args.niter, lstsq_fit_thr=args.flex)
     coords_out = coords_out.cpu().detach().numpy()
     cmd.load_coords(coords_out, 'mod')
     cmd.save(f'{os.path.splitext(args.pdb1)[0]}_icp.pdb', selection='mod')
