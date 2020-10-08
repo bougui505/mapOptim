@@ -147,9 +147,10 @@ def find_initial_alignment(coords, coords_ref, fsize=30):
     return R_best, t_best
 
 
-def icp(coords, coords_ref, device, n_iter, dist_thr=3.8, do_lstsq_fit=False):
+def icp(coords, coords_ref, device, n_iter, dist_thr=3.8, lstsq_fit_thr=0.):
     """
     Iterative Closest Point
+    - lstsq_fit_thr: distance threshold for least square fit (if 0: no lstsq_fit)
     """
     coords_out = coords.detach().clone()
     R, t = find_initial_alignment(coords_out, coords_ref)
@@ -167,8 +168,8 @@ def icp(coords, coords_ref, device, n_iter, dist_thr=3.8, do_lstsq_fit=False):
         print_progress(f'{i+1}/{n_iter}: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)} at less than {dist_thr} Å             ')
     sys.stdout.write('\n')
     print("---")
-    if do_lstsq_fit:
-        coords_out = lstsq_fit(coords_out, coords_ref)
+    if lstsq_fit_thr > 0.:
+        coords_out = lstsq_fit(coords_out, coords_ref, dist_thr=lstsq_fit_thr)
         rmsd = get_RMSD(coords_out[sel], coords_ref[assignment])
         print(f'lstsq_fit: {rmsd} Å; n_assigned: {n_assigned}/{len(coords)} at less than {dist_thr} Å')
     sys.stdout.write('\n')
