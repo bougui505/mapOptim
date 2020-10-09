@@ -159,7 +159,7 @@ def write_pdb(obj, coords, outfilename, seq=None):
     if seq is not None:
         myspace = {}
         myspace['seq_iter'] = iter(seq)
-        cmd.alter(obj, 'resn=f"{seq_iter.__next__()}"')
+        cmd.alter(obj, 'resn=f"{seq_iter.__next__()}"', space=myspace)
     cmd.save(outfilename, selection=obj)
 
 
@@ -187,7 +187,6 @@ if __name__ == '__main__':
 
     if args.seq is not None:
         seq = read_fasta(args.seq)
-        print(seq)
     else:
         seq = None
 
