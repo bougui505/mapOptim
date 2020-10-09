@@ -132,6 +132,30 @@ def minimize(coords, cmap_ref, device, n_iter, do_normalize_P=False, coords_ref=
     return coords_pred
 
 
+def read_fasta(fasta_file):
+    """
+    read only 1 chain
+    """
+    aa1 = list("ACDEFGHIKLMNPQRSTVWY")
+    aa3 = "ALA CYS ASP GLU PHE GLY HIS ILE LYS LEU MET ASN PRO GLN ARG SER THR VAL TRP TYR".split()
+    aa123 = dict(zip(aa1, aa3))
+    # aa321 = dict(zip(aa3, aa1))
+    with open(fasta_file) as fasta:
+        seq = ''
+        for line in fasta:
+            if line[0] == '>':
+                pass
+            else:
+                seq += line.strip()
+    seq = [aa123[r] for r in seq]
+    return seq
+
+
+def write_pdb(obj, coords, outfilename, seq=None):
+    cmd.load_coords(coords, obj)
+    cmd.save(outfilename, selection=obj)
+
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import os
@@ -147,11 +171,18 @@ if __name__ == '__main__':
     parser.add_argument('--niter', type=int, help='Number of iteration for optimizer (default: 10000)',
                         default=10000)
     parser.add_argument('--pdbref', type=str, help='Generate a npy file with the contact map build from the pdb and exit')
+    parser.add_argument('--seq', type=str, help='Fasta file with the sequence to write in the output pdb file')
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit()
+
+    if args.seq is not None:
+        seq = read_fasta(args.seq)
+        print(seq)
+    else:
+        seq = None
 
     if args.pdbref is not None:
         coords_ref = get_coords(args.pdbref, 'ref', device=device)
@@ -176,8 +207,8 @@ if __name__ == '__main__':
         coords_out = ICP.icp(coords_out, anchors, device, 10, lstsq_fit_thr=1.9)
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
-    cmd.load_coords(coords_out, 'mod')
-    cmd.save('out.pdb', selection='mod')
+    outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_optimap.pdb"
+    write_pdb(obj='mod', coords=coords_out, outfilename=outpdbfilename, seq=None)
     plt.matshow(cmap_in.cpu().numpy())
     plt.savefig('cmap_in.png')
     plt.matshow(cmap_ref.cpu().numpy())
