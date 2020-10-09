@@ -197,6 +197,8 @@ if __name__ == '__main__':
 
     if args.resids is not None:
         resids = numpy.genfromtxt(args.resids, dtype=int)
+    else:
+        resids = None
 
     if args.pdbref is not None:
         coords_ref = get_coords(args.pdbref, 'ref', device=device)
