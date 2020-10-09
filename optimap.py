@@ -8,7 +8,10 @@
 import pymol.cmd as cmd
 import torch
 import sys
-import ICP
+try:
+    from . import ICP
+except ImportError:
+    import ICP
 import numpy
 
 
@@ -153,6 +156,10 @@ def read_fasta(fasta_file):
 
 def write_pdb(obj, coords, outfilename, seq=None):
     cmd.load_coords(coords, obj)
+    if seq is not None:
+        myspace = {}
+        myspace['seq_iter'] = iter(seq)
+        cmd.alter(obj, 'resn=f"{seq_iter.__next__()}"')
     cmd.save(outfilename, selection=obj)
 
 
@@ -208,7 +215,7 @@ if __name__ == '__main__':
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_optimap.pdb"
-    write_pdb(obj='mod', coords=coords_out, outfilename=outpdbfilename, seq=None)
+    write_pdb(obj='mod', coords=coords_out, outfilename=outpdbfilename, seq=seq)
     plt.matshow(cmap_in.cpu().numpy())
     plt.savefig('cmap_in.png')
     plt.matshow(cmap_ref.cpu().numpy())
