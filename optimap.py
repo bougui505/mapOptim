@@ -154,12 +154,16 @@ def read_fasta(fasta_file):
     return seq
 
 
-def write_pdb(obj, coords, outfilename, seq=None):
+def write_pdb(obj, coords, outfilename, seq=None, resids=None):
     cmd.load_coords(coords, obj)
     if seq is not None:
         myspace = {}
         myspace['seq_iter'] = iter(seq)
         cmd.alter(obj, 'resn=f"{seq_iter.__next__()}"', space=myspace)
+    if resids is not None:
+        myspace = {}
+        myspace['resid_iter'] = iter(resids)
+        cmd.alter(obj, 'resi=f"{resid_iter.__next__()}"', space=myspace)
     cmd.save(outfilename, selection=obj)
 
 
@@ -179,6 +183,7 @@ if __name__ == '__main__':
                         default=10000)
     parser.add_argument('--pdbref', type=str, help='Generate a npy file with the contact map build from the pdb and exit')
     parser.add_argument('--seq', type=str, help='Fasta file with the sequence to write in the output pdb file')
+    parser.add_argument('--resids', type=str, help='column text file with the residue numbering')
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
@@ -189,6 +194,9 @@ if __name__ == '__main__':
         seq = read_fasta(args.seq)
     else:
         seq = None
+
+    if args.resids is not None:
+        resids = numpy.genfromtxt(args.resids, dtype=int)
 
     if args.pdbref is not None:
         coords_ref = get_coords(args.pdbref, 'ref', device=device)
@@ -214,7 +222,7 @@ if __name__ == '__main__':
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_optimap.pdb"
-    write_pdb(obj='mod', coords=coords_out, outfilename=outpdbfilename, seq=seq)
+    write_pdb(obj='mod', coords=coords_out, outfilename=outpdbfilename, seq=seq, resids=resids)
     plt.matshow(cmap_in.cpu().numpy())
     plt.savefig('cmap_in.png')
     plt.matshow(cmap_ref.cpu().numpy())
