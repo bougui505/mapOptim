@@ -156,7 +156,7 @@ def read_fasta(fasta_file):
 
 def write_pdb(obj, coords, outfilename, seq=None, resids=None):
     for c in coords:
-        cmd.pseudoatom(object=obj, pos=c, name='CA')
+        cmd.pseudoatom(object=obj, pos=tuple(c), name='CA')
     if seq is not None:
         myspace = {}
         myspace['seq_iter'] = iter(seq)
