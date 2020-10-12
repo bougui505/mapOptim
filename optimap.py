@@ -175,9 +175,15 @@ def fix_coords_len(obj, offset, device):
     """
     n = cmd.select(obj)
     if offset < 0:
+        print(f'Removing {-offset} CA')
         # torm = numpy.random.choice(n, size=-offset, replace=False) + 1
         torm = numpy.arange(n)[::-1][:-offset]
         cmd.remove(f'{obj} and index {torm[-1]}-{torm[0]}')
+    if offset > 0:
+        print(f'Adding {offset} CA')
+        pos = tuple(cmd.get_coords(obj).mean(axis=0))
+        for i in range(offset):
+            cmd.pseudoatom(obj, pos=pos, resn='ALA', hetatm=False, name='CA')
     coords_out = cmd.get_coords(obj)
     coords_out = torch.from_numpy(coords_out)
     coords_out = coords_out.to(device)
