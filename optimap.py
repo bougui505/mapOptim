@@ -168,21 +168,21 @@ def write_pdb(obj, coords, outfilename, seq=None, resids=None):
     cmd.save(outfilename, selection=obj)
 
 
-def fix_coords_len(coords, cmap):
+def fix_coords_len(obj, offset, device):
     """
     Add or remove C-alpha if needed
+    - offset > 0: add offset ca
+    - offset < 0: remove offset ca
     """
-    n_coords = coords.shape[0]
-    n_cmap = cmap.shape[0]
-    if n_coords > n_cmap:
-        # Remove random C-alpha
-        a = torch.arange(n_coords)
-        b = torch.randperm(n_coords)[:n_cmap]
-        sel = torch.nonzero((a[..., None] == b).any(-1), as_tuple=False).squeeze()
-        coords_out = coords[sel]
-        return coords_out
-    else:
-        return coords
+    n = cmd.select(obj)
+    if offset < 0:
+        torm = numpy.random.choice(n, size=-offset, replace=False) + 1
+        cmd.remove(f'{obj} and index {"+".join(["%d" % i for i in torm])}')
+    coords_out = cmd.get_coords(obj)
+    coords_out = torch.from_numpy(coords_out)
+    coords_out = coords_out.to(device)
+    return coords_out
+
 
 
 if __name__ == '__main__':
@@ -223,16 +223,18 @@ if __name__ == '__main__':
         cmap_ref = get_cmap(coords_ref, device=device)
         numpy.save(f'{os.path.splitext(args.pdbref)[0]}_cmap.npy', cmap_ref)
         sys.exit()
-    coords_in = get_coords(args.pdb, 'mod', device)
-    if args.anchors is None:
-        anchors = torch.clone(coords_in)
-    else:
-        anchors = get_coords(args.anchors, 'anchors', device)
     cmap_ref = numpy.load(args.cmap)
     cmap_ref = torch.from_numpy(cmap_ref)
     cmap_ref = cmap_ref.float()
     cmap_ref = cmap_ref.to(device)
-    coords_in = fix_coords_len(coords_in, cmap_ref)
+    coords_in = get_coords(args.pdb, 'mod', device)
+    n = coords_in.shape[0]
+    n_cmap = cmap_ref.shape[0]
+    coords_in = fix_coords_len('mod', offset=n_cmap - n, device=device)
+    if args.anchors is None:
+        anchors = torch.clone(coords_in)
+    else:
+        anchors = get_coords(args.anchors, 'anchors', device)
     cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
     coords_out = torch.clone(coords_in)
