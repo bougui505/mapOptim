@@ -167,6 +167,23 @@ def write_pdb(obj, coords, outfilename, seq=None, resids=None):
     cmd.save(outfilename, selection=obj)
 
 
+def fix_coords_len(coords, cmap):
+    """
+    Add or remove C-alpha if needed
+    """
+    n_coords = coords.shape[0]
+    n_cmap = cmap.shape[0]
+    if n_coords > n_cmap:
+        # Remove random C-alpha
+        a = torch.arange(n_coords)
+        b = torch.randperm(n_coords)[:n_cmap]
+        sel = torch.nonzero((a[..., None] == b).any(-1), as_tuple=False).squeeze()
+        coords_out = coords[sel]
+        return coords_out
+    else:
+        return coords
+
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import os
@@ -214,6 +231,7 @@ if __name__ == '__main__':
     cmap_ref = torch.from_numpy(cmap_ref)
     cmap_ref = cmap_ref.float()
     cmap_ref = cmap_ref.to(device)
+    coords_in = fix_coords_len(coords_in, cmap_ref)
     cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
     coords_out = torch.clone(coords_in)
