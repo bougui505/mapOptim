@@ -175,7 +175,8 @@ def fix_coords_len(obj, offset, device):
     """
     n = cmd.select(obj)
     if offset < 0:
-        torm = numpy.random.choice(n, size=-offset, replace=False) + 1
+        # torm = numpy.random.choice(n, size=-offset, replace=False) + 1
+        torm = numpy.arange(n)[::-1][:-offset]
         cmd.remove(f'{obj} and index {"+".join(["%d" % i for i in torm])}')
     coords_out = cmd.get_coords(obj)
     coords_out = torch.from_numpy(coords_out)
