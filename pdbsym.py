@@ -81,10 +81,13 @@ def find_rigid_alignment(A, B):
     return R, t, rmsd, theta_x, theta_y, theta_z
 
 
-def find_symmetry(seqhashes, chains, rmsd_threshold=3.):
+def find_symmetry(seqhashes, chains, outsymfile, rmsd_threshold=3.):
     seqmatch = {h: [] for h in seqhashes}
     for h, c in zip(seqhashes, chains):
         seqmatch[h].append(c)
+    Rlist = []
+    chainlist = []
+    tlist = []
     for h in seqmatch:
         chains = seqmatch[h]
         if len(chains) > 1:
@@ -95,17 +98,20 @@ def find_symmetry(seqhashes, chains, rmsd_threshold=3.):
                 R, t, rmsd, theta_x, theta_y, theta_z = find_rigid_alignment(A, B)
                 if rmsd <= rmsd_threshold:
                     print(f'{chain1}={chain2} (RMSD={rmsd:.2f}Å, θx={theta_x:.2f}°, θy={theta_y:.2f}°, θz={theta_z:.2f}°, tx={t[0]:.2f}Å, ty={t[1]:.2f}Å, tz={t[2]:.2f}Å)')
-                    numpy.savez(f'symmetry_{chain1}-{chain2}.npz', R=R, t=t)
+                    Rlist.append(R)
+                    tlist.append(t)
+                    chainlist.append((chain1, chain2))
+    numpy.savez(f'{os.path.splitext(outsymfile)[0]}.npz', R=Rlist, t=tlist, chain=chainlist)
 
 
-def apply_symmetry(R, t, outchain, outfilename):
-    cmd.copy('symm', 'inpdb')
+def apply_symmetry(R, t, inchain, outchain):
+    cmd.copy('symm', f'inpdb')
     coords = cmd.get_coords('symm')
+    cmd.remove(f'symm and not chain {inchain}')
     coords_symm = (R.dot(coords.T)).T + t
     cmd.load_coords(coords_symm, 'symm')
     myspace = {'outchain': outchain}
     cmd.alter('symm', 'chain=f"{outchain}"', space=myspace)
-    cmd.save(outfilename, 'inpdb or symm')
 
 
 if __name__ == '__main__':
@@ -128,13 +134,15 @@ if __name__ == '__main__':
         seqhash = md5sum(seq)
         seqhashes.append(seqhash)
     if args.apply is None:
-        find_symmetry(seqhashes, chains)
+        outsymfile = f'{os.path.splitext(args.pdb)[0]}_sym.npz'
+        find_symmetry(seqhashes, chains, outsymfile)
     else:
         symm = numpy.load(args.apply)
-        R = symm['R']
-        t = symm['t']
-        outchain = os.path.basename(args.apply)
-        outchain = os.path.splitext(outchain)[0]
-        outchain = outchain.split('-')[-1]
+        Rlist = symm['R']
+        tlist = symm['t']
+        chainlist = symm['chain']
+        for R, t, chains in zip(Rlist, tlist, chainlist):
+            inchain, outchain = chains
+            apply_symmetry(R, t, inchain, outchain)
         outfilename = f'{os.path.splitext(args.pdb)[0]}_sym.pdb'
-        apply_symmetry(R, t, outchain, outfilename)
+        cmd.save(outfilename, 'inpdb or symm')
