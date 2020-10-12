@@ -155,7 +155,8 @@ def read_fasta(fasta_file):
 
 
 def write_pdb(obj, coords, outfilename, seq=None, resids=None):
-    cmd.load_coords(coords, obj)
+    for c in coords:
+        cmd.pseudoatom(object=obj, pos=c, name='CA')
     if seq is not None:
         myspace = {}
         myspace['seq_iter'] = iter(seq)
@@ -242,7 +243,7 @@ if __name__ == '__main__':
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_optimap.pdb"
-    write_pdb(obj='mod', coords=coords_out, outfilename=outpdbfilename, seq=seq, resids=resids)
+    write_pdb(obj='out', coords=coords_out, outfilename=outpdbfilename, seq=seq, resids=resids)
     plt.matshow(cmap_in.cpu().numpy())
     plt.savefig('cmap_in.png')
     plt.matshow(cmap_ref.cpu().numpy())
