@@ -254,7 +254,7 @@ if __name__ == '__main__':
         coords_out = torch.clone(coords_in)
         coords_out = minimize(coords_out, cmap_ref, device, args.niter, P_in=P)
         coords_out = ICP.icp(coords_out, anchors, device, 10, lstsq_fit_thr=1.9)
-        _, P = ICP.assign_anchors(coords_in, coords_out, return_perm=True)
+        _, _, P = ICP.assign_anchors(coords_in, coords_out, return_perm=True)
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_optimap.pdb"

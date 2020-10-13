@@ -6,6 +6,8 @@
 # 2020-10-02 10:00:15 (UTC+0200)
 
 import sys
+import scipy.optimize
+import numpy as np
 import torch
 
 
@@ -78,74 +80,161 @@ def get_RMSD(A, B):
 def assign_anchors(coords, coords_ref, dist_thr=None, return_perm=False):
     """
     Assign the closest anchors with coords coords_ref
+
+    # Test with equal shape for coords and coords_ref
     >>> coords_ref = torch.tensor([[0., 0., 0.], [1., 2., 3.], [4., 5., 6.], [7., 8., 9.]])
     >>> coords = torch.zeros_like(coords_ref)
     >>> coords[0] = coords_ref[1]
     >>> coords[1] = coords_ref[3]
     >>> coords[2] = coords_ref[0]
     >>> coords[3] = coords_ref[2]
+    >>> coords
+    tensor([[1., 2., 3.],
+            [7., 8., 9.],
+            [0., 0., 0.],
+            [4., 5., 6.]])
     >>> get_RMSD(coords, coords_ref)
     tensor(7.5166)
-    >>> assignment = assign_anchors(coords, coords_ref)
-    >>> assignment
-    tensor([2, 0, 3, 1])
+    >>> assignment, sel, P = assign_anchors(coords, coords_ref, return_perm=True)
     >>> coords_ordered = coords[assignment]
-    >>> get_RMSD(coords_ordered, coords_ref)
-    tensor(0.)
-    >>> coords[2] += 100.
-    >>> assignment, sel = assign_anchors(coords, coords_ref, dist_thr=4.)
-    >>> assignment
-    tensor([0, 3, 1])
-    >>> sel
-    tensor([1, 2, 3])
-    >>> coords_ordered = coords[assignment]
+    >>> (coords.T.mm(P).T == coords_ordered).all()
+    tensor(True)
+    >>> coords_ordered
+    tensor([[0., 0., 0.],
+            [1., 2., 3.],
+            [4., 5., 6.],
+            [7., 8., 9.]])
     >>> get_RMSD(coords_ordered, coords_ref[sel])
     tensor(0.)
-    >>> assignment, sel, P = assign_anchors(coords, coords_ref, dist_thr=4., return_perm=True)
-    >>> assignment
-    tensor([0, 3, 1])
-    >>> P
-    tensor([[0.2500, 1.0000, 0.0000, 0.0000],
-            [0.2500, 0.0000, 0.0000, 1.0000],
-            [0.2500, 0.0000, 0.0000, 0.0000],
-            [0.2500, 0.0000, 1.0000, 0.0000]])
 
-    >>> coords_ordered = coords.T.mm(P).T
-    >>> get_RMSD(coords_ordered[sel], coords_ref[sel])
+
+    # Test with size of coords_ref lower than coords
+    >>> coords_ref = torch.tensor([[-1., -2., -3.], [1., 2., 3.], [4., 5., 6.], [7., 8., 9.]])
+    >>> coords = torch.zeros((5, 3))
+    >>> coords[0] = coords_ref[1]
+    >>> coords[1] = coords_ref[3]
+    >>> coords[4] = coords_ref[0]
+    >>> coords[3] = coords_ref[2]
+    >>> coords[2] = torch.tensor([10., 11., 12.])
+    >>> coords
+    tensor([[ 1.,  2.,  3.],
+            [ 7.,  8.,  9.],
+            [10., 11., 12.],
+            [ 4.,  5.,  6.],
+            [-1., -2., -3.]])
+    >>> assignment, sel, P = assign_anchors(coords, coords_ref, return_perm=True)
+    >>> coords_ordered = coords[assignment]
+    >>> (coords.T.mm(P).T == coords_ordered).all()
+    tensor(True)
+    >>> coords_ordered
+    tensor([[-1., -2., -3.],
+            [ 1.,  2.,  3.],
+            [ 4.,  5.,  6.],
+            [ 7.,  8.,  9.]])
+    >>> get_RMSD(coords_ordered, coords_ref[sel])
     tensor(0.)
+
+    # Test with size of coords_ref higher than coords
+    >>> coords_ref = torch.tensor([[-1., -2., -3.], [1., 2., 3.], [4., 5., 6.], [7., 8., 9.], [10, 11, 12]])
+    >>> coords = torch.zeros((4, 3))
+    >>> coords[0] = coords_ref[1]
+    >>> coords[1] = coords_ref[3]
+    >>> coords[2] = coords_ref[0]
+    >>> coords[3] = coords_ref[4]
+    >>> coords
+    tensor([[ 1.,  2.,  3.],
+            [ 7.,  8.,  9.],
+            [-1., -2., -3.],
+            [10., 11., 12.]])
+    >>> assignment, sel, P = assign_anchors(coords, coords_ref, return_perm=True)
+    >>> coords_ordered = coords[assignment]
+    >>> (coords.T.mm(P).T == coords_ordered).all()
+    tensor(True)
+    >>> coords_ordered
+    tensor([[-1., -2., -3.],
+            [ 1.,  2.,  3.],
+            [ 7.,  8.,  9.],
+            [10., 11., 12.]])
+    >>> sel
+    array([0, 1, 3, 4])
+    >>> assignment
+    array([2, 0, 1, 3])
+    >>> get_RMSD(coords_ordered, coords_ref[sel])
+    tensor(0.)
+
+    >>> coords[2] += 100.
+    >>> assignment, sel, P = assign_anchors(coords, coords_ref, dist_thr=4., return_perm=True)
+    >>> coords_ref
+    tensor([[-1., -2., -3.],
+            [ 1.,  2.,  3.],
+            [ 4.,  5.,  6.],
+            [ 7.,  8.,  9.],
+            [10., 11., 12.]])
+    >>> coords
+    tensor([[ 1.,  2.,  3.],
+            [ 7.,  8.,  9.],
+            [99., 98., 97.],
+            [10., 11., 12.]])
+    >>> coords_ordered = coords[assignment]
+    >>> coords_ordered
+    tensor([[ 1.,  2.,  3.],
+            [ 7.,  8.,  9.],
+            [10., 11., 12.]])
+    >>> get_RMSD(coords_ordered, coords_ref[sel])
+    tensor(0.)
+    >>> coords.T.mm(P).T
+    tensor([[ 1.0000,  2.0000,  3.0000],
+            [ 7.0000,  8.0000,  9.0000],
+            [10.0000, 11.0000, 12.0000],
+            [29.2500, 29.7500, 30.2500]])
+
+    # >>> assignment
+    # tensor([0, 3, 1])
+
+    # >>> sel
+    # tensor([1, 2, 3])
+    # >>> coords_ordered = coords[assignment]
+    # >>> get_RMSD(coords_ordered, coords_ref[sel])
+    # tensor(0.)
+
+    # >>> assignment, sel, P = assign_anchors(coords, coords_ref, dist_thr=4., return_perm=True)
+    # >>> assignment
+    # tensor([0, 3, 1])
+    # >>> P
+    # tensor([[0.2500, 1.0000, 0.0000, 0.0000],
+    #         [0.2500, 0.0000, 0.0000, 1.0000],
+    #         [0.2500, 0.0000, 0.0000, 0.0000],
+    #         [0.2500, 0.0000, 1.0000, 0.0000]])
+
+    # >>> coords_ordered = coords.T.mm(P).T
+    # >>> get_RMSD(coords_ordered[sel], coords_ref[sel])
+    # tensor(0.)
+
     """
-    cdist = torch.cdist(coords,
-                        coords_ref)
-    mindists, argmins = torch.min(cdist, axis=1)
-    order = mindists.argsort()
+    cdist = torch.cdist(coords, coords_ref)
+    cdist = cdist.cpu().numpy()
+    row_ind, col_ind = scipy.optimize.linear_sum_assignment(cdist)
     if dist_thr is not None:
-        sel = mindists[order] <= dist_thr
-        order = order[torch.nonzero(sel, as_tuple=True)]
-    maxval = cdist.max()
-    assignment = - torch.ones_like(mindists, dtype=torch.long)
-    n = len(coords)
-    P = torch.zeros((n, n))  # Permutation matrix
-    for i in order:
-        j = torch.argmin(cdist[i])
-        assignment[j] = i
-        cdist[:, j] = maxval * 10.
-    P[assignment, torch.arange(n)] = 1.
-    if dist_thr is not None:
-        sel = (assignment != -1)
-        sel = torch.nonzero(sel, as_tuple=True)[0]
-        notsel = (assignment == -1)
-        notsel = torch.nonzero(notsel, as_tuple=True)[0]
-        assignment = assignment[sel]
-        P[:, notsel] = 1 / n
-        if return_perm:
-            return assignment.squeeze(), sel, P
-        else:
-            return assignment.squeeze(), sel
+        distances = cdist[row_ind, col_ind]
+        sel = distances <= dist_thr
+        row_ind = row_ind[sel]
+        col_ind = col_ind[sel]
+    n = coords.shape[0]
+    n_ref = coords_ref.shape[0]
+    assignment = -np.ones(n_ref, dtype=int)
+    assignment[col_ind] = row_ind
+    assignment = assignment[assignment > -1]
+    sel = list(col_ind)
+    sel.sort()
+    sel = np.asarray(sel)
+    if return_perm:
+        P = torch.zeros((n, n_ref))
+        P[assignment, torch.arange(len(assignment))] = 1.
+        P = P[:, :n]
+        P[:, P.sum(axis=0) == 0] = 1 / n
+        return assignment, sel, P
     else:
-        if return_perm:
-            return assignment, P
-        else:
-            return assignment
+        return assignment, sel
 
 
 def find_initial_alignment(coords, coords_ref, fsize=30):
@@ -236,7 +325,6 @@ def lstsq_fit(coords, coords_ref, dist_thr=1.9, ca_dist=3.8):
 if __name__ == '__main__':
     import pymol.cmd as cmd
     import optimap
-    import numpy as np  # For doctest
     import doctest
     import os
     import argparse
