@@ -106,15 +106,16 @@ def get_rmsd(A, B):
     return rmsd
 
 
-def minimize(coords, cmap_ref, device, n_iter, P=None, do_normalize_P=False, coords_ref=None):
+def minimize(coords, cmap_ref, device, n_iter, P_in=None, do_normalize_P=False, coords_ref=None):
     """
     - P: initial permutation matrix
     """
     n = coords.shape[0]
     # Permutation matrix
-    if P is None:
+    if P_in is None:
         P = torch.eye(n, requires_grad=True, device=device)
     else:
+        P = torch.clone(P_in)
         P.requires_grad = True
         P = P.to(device)
     optimizer = torch.optim.Adam([P, ], lr=1e-3)
@@ -252,7 +253,7 @@ if __name__ == '__main__':
     for i in range(5):
         print(f'################ Iteration {i+1} ################')
         coords_out = torch.clone(coords_in)
-        coords_out = minimize(coords_out, cmap_ref, device, args.niter, P=P)
+        coords_out = minimize(coords_out, cmap_ref, device, args.niter, P_in=P)
         coords_out = ICP.icp(coords_out, anchors, device, 10, lstsq_fit_thr=1.9)
         _, P = ICP.assign_anchors(coords_in, coords_out, return_perm=True)
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
