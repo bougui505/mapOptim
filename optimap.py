@@ -253,7 +253,7 @@ if __name__ == '__main__':
         print(f'################ Iteration {i+1} ################')
         coords_out = torch.clone(coords_in)
         coords_out = minimize(coords_out, cmap_ref, device, args.niter, P_in=P)
-        coords_out = ICP.icp(coords_out, anchors, device, 10, lstsq_fit_thr=1.9)
+        coords_out = ICP.icp(coords_out, anchors, 'cpu', 10, lstsq_fit_thr=1.9)
         _, _, P = ICP.assign_anchors(coords_in, coords_out, return_perm=True)
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
