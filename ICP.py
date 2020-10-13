@@ -265,8 +265,6 @@ def icp(coords, coords_ref, device, n_iter, dist_thr=3.8, lstsq_fit_thr=0.):
     Iterative Closest Point
     - lstsq_fit_thr: distance threshold for least square fit (if 0: no lstsq_fit)
     """
-    coords = coords.to(device)
-    coords_ref = coords_ref.to(device)
     coords_out = coords.detach().clone()
     R, t = find_initial_alignment(coords_out, coords_ref)
     coords_out = transform(coords_out, R, t)
