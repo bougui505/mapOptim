@@ -75,7 +75,7 @@ def get_RMSD(A, B):
     return rmsd
 
 
-def assign_anchors(coords, coords_ref, dist_thr=None):
+def assign_anchors(coords, coords_ref, dist_thr=None, return_perm=False):
     """
     Assign the closest anchors with coords coords_ref
     >>> coords_ref = torch.tensor([[0., 0., 0.], [1., 2., 3.], [4., 5., 6.], [7., 8., 9.]])
@@ -101,6 +101,18 @@ def assign_anchors(coords, coords_ref, dist_thr=None):
     >>> coords_ordered = coords[assignment]
     >>> get_RMSD(coords_ordered, coords_ref[sel])
     tensor(0.)
+    >>> assignment, sel, P = assign_anchors(coords, coords_ref, dist_thr=4., return_perm=True)
+    >>> assignment
+    tensor([0, 3, 1])
+    >>> P
+    tensor([[0.2500, 1.0000, 0.0000, 0.0000],
+            [0.2500, 0.0000, 0.0000, 1.0000],
+            [0.2500, 0.0000, 0.0000, 0.0000],
+            [0.2500, 0.0000, 1.0000, 0.0000]])
+
+    >>> coords_ordered = coords.T.mm(P).T
+    >>> get_RMSD(coords_ordered[sel], coords_ref[sel])
+    tensor(0.)
     """
     cdist = torch.cdist(coords,
                         coords_ref)
@@ -111,17 +123,29 @@ def assign_anchors(coords, coords_ref, dist_thr=None):
         order = order[torch.nonzero(sel, as_tuple=True)]
     maxval = cdist.max()
     assignment = - torch.ones_like(mindists, dtype=torch.long)
+    n = len(coords)
+    P = torch.zeros((n, n))  # Permutation matrix
     for i in order:
         j = torch.argmin(cdist[i])
         assignment[j] = i
         cdist[:, j] = maxval * 10.
+    P[assignment, torch.arange(n)] = 1.
     if dist_thr is not None:
         sel = (assignment != -1)
         sel = torch.nonzero(sel, as_tuple=True)[0]
+        notsel = (assignment == -1)
+        notsel = torch.nonzero(notsel, as_tuple=True)[0]
         assignment = assignment[sel]
-        return assignment.squeeze(), sel
+        P[:, notsel] = 1 / n
+        if return_perm:
+            return assignment.squeeze(), sel, P
+        else:
+            return assignment.squeeze(), sel
     else:
-        return assignment
+        if return_perm:
+            return assignment, P
+        else:
+            return assignment
 
 
 def find_initial_alignment(coords, coords_ref, fsize=30):
@@ -217,18 +241,28 @@ if __name__ == '__main__':
     import os
     import argparse
 
-    doctest.testmod()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     parser = argparse.ArgumentParser(description='Iterative Closest Point algorithm for structural alignment')
-    parser.add_argument('--pdb1', type=str, help='First protein structure (mobile)',
-                        required=True)
-    parser.add_argument('--pdb2', type=str, help='Second protein structure (reference)',
-                        required=True)
+    parser.add_argument('--pdb1', type=str, help='First protein structure (mobile)')
+    parser.add_argument('--pdb2', type=str, help='Second protein structure (reference)')
     parser.add_argument('--niter', type=int, help='Number of iterations (default: 100)',
                         default=100)
     parser.add_argument('--flex', type=float, help='Distance threshold for flexible fitting using least square (default=0, no least square flexible fitting)', default=0.)
+    parser.add_argument('--debug', default=False, help='Just run the doctest for debug purpose only', action='store_true')
     args = parser.parse_args()
+
+    if args.debug:
+        print("Debugging...")
+        doctest.testmod()
+        sys.exit()
+
+    if args.pdb1 is None or args.pdb2 is None:
+        print("")
+        print("The following arguments are required: --pdb1, --pdb2")
+        print("")
+        parser.print_help()
+        sys.exit(1)
 
     coords_ref = optimap.get_coords(args.pdb2, 'ref', device=device)
     coords_in = optimap.get_coords(args.pdb1, 'mod', device)
