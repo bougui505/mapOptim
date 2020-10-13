@@ -106,10 +106,17 @@ def get_rmsd(A, B):
     return rmsd
 
 
-def minimize(coords, cmap_ref, device, n_iter, do_normalize_P=False, coords_ref=None):
+def minimize(coords, cmap_ref, device, n_iter, P=None, do_normalize_P=False, coords_ref=None):
+    """
+    - P: initial permutation matrix
+    """
     n = coords.shape[0]
     # Permutation matrix
-    P = torch.eye(n, requires_grad=True, device=device)
+    if P is None:
+        P = torch.eye(n, requires_grad=True, device=device)
+    else:
+        P.requires_grad = True
+        P = P.to(device)
     optimizer = torch.optim.Adam([P, ], lr=1e-3)
     n = coords.shape[0]
     for t in range(n_iter):
@@ -131,7 +138,7 @@ def minimize(coords, cmap_ref, device, n_iter, do_normalize_P=False, coords_ref=
                 print_progress(f'{t+1}/{n_iter}: L={loss}')
     sys.stdout.write('\n')
     print("---")
-    numpy.save('permutation.npy', P_norm.cpu().detach().numpy())
+    # numpy.save('permutation.npy', P_norm.cpu().detach().numpy())
     return coords_pred
 
 
@@ -240,17 +247,19 @@ if __name__ == '__main__':
         anchors = torch.clone(coords_in)
     else:
         anchors = get_coords(args.anchors, 'anchors', device)
-    cmap_in = get_cmap(coords_in, device='cpu')
     n = coords_in.shape[0]
-    coords_out = torch.clone(coords_in)
-    for i in range(1):
-        #  print(f'################ Iteration {i+1} ################')
-        coords_out = minimize(coords_out, cmap_ref, device, args.niter)
+    P = torch.eye(n)
+    for i in range(5):
+        print(f'################ Iteration {i+1} ################')
+        coords_out = torch.clone(coords_in)
+        coords_out = minimize(coords_out, cmap_ref, device, args.niter, P=P)
         coords_out = ICP.icp(coords_out, anchors, device, 10, lstsq_fit_thr=1.9)
+        _, P = ICP.assign_anchors(coords_in, coords_out, return_perm=True)
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_optimap.pdb"
     write_pdb(obj='mod', coords=coords_out, outfilename=outpdbfilename, seq=seq, resids=resids)
+    cmap_in = get_cmap(coords_in, device='cpu')
     plt.matshow(cmap_in.cpu().numpy())
     plt.savefig('cmap_in.png')
     plt.matshow(cmap_ref.cpu().numpy())
