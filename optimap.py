@@ -115,7 +115,8 @@ def minimize(coords, cmap_ref, device, n_iter, P_in=None, do_normalize_P=False, 
     if P_in is None:
         P = torch.eye(n, requires_grad=True, device=device)
     else:
-        P = torch.tensor(P_in, requires_grad=True, device=device)
+        # P = torch.tensor(P_in, requires_grad=True, device=device)
+        P = P_in.clone().detach().to(device).requires_grad_(True)
     optimizer = torch.optim.Adam([P, ], lr=1e-3)
     n = coords.shape[0]
     for t in range(n_iter):
