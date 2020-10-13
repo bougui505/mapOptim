@@ -27,7 +27,7 @@ def matching(A, B, dist_threshold=3.):
     Percentage of protein residues in the deposited model or the unique part of the deposited model that are within 3 A of a residue (residues represented by their CA) in the automatically-generated model.
     """
     cdist = dist.cdist(A, B)
-    dmin = cdist.min(axis=1)
+    dmin = cdist.min(axis=0)
     n = B.shape[0]
     n_match = (dmin <= dist_threshold).sum()
     return n_match / n
@@ -49,15 +49,15 @@ def seq_match(A, B, seq_A, seq_B, dist_threshold=3.):
     Percentage of matching residues that have the same residue name.
     """
     cdist = dist.cdist(A, B)
-    dmin = cdist.min(axis=1)
-    n = B.shape[0]
+    dmin = cdist.min(axis=0)
+    assignment = cdist.argmin(axis=0)
     is_match = (dmin <= dist_threshold)
     n_match = 0
     for i, match in enumerate(is_match):
         if match:
-            if seq_A[i] == seq_B[i]:
+            if seq_A[assignment[i]] == seq_B[i]:
                 n_match += 1
-    return n_match / n
+    return n_match / is_match.sum()
 
 
 if __name__ == '__main__':
@@ -74,6 +74,8 @@ if __name__ == '__main__':
     A_chains = cmd.get_chains('A_')
     B = load_pdb(args.pdb2, 'B_', args.sel2)
     B_chains = cmd.get_chains('B_')
+    print(f'PDB1: {A.shape[0]} CA')
+    print(f'PDB2: {B.shape[0]} CA')
     matching = matching(A, B)
     print(f'% Matching:\t{matching*100:.1f}')
     seq_A = get_sequence('A_')
