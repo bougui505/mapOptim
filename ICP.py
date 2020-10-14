@@ -377,15 +377,13 @@ if __name__ == '__main__':
     # Try the ICP
     coords_out = icp(coords_in, coords_ref, device, args.niter, lstsq_fit_thr=args.flex)
     if args.permute:
-        print(coords_out.shape)
         _, _, P = assign_anchors(coords_out, coords_ref, return_perm=True, dist_thr=3.8)
         coords_out = coords_out.T.mm(P).T
-        print(coords_out.shape, coords_ref.shape)
         resids = torch.tensor(get_resids('mod'))
         resids_out = torch.squeeze(resids[None, :].mm(P.to(torch.long))).numpy()
         resids = resids.numpy()
         for r in (set(resids) - set(resids_out)):
             cmd.remove(f'mod and resi {r}')
     coords_out = coords_out.cpu().detach().numpy()
-    cmd.load_coords(coords_out, 'mod')
-    cmd.save(f'{os.path.splitext(args.pdb1)[0]}_icp.pdb', selection='mod')
+    optimap.write_pdb(obj='mod', coords=coords_out,
+                      outfilename=f'{os.path.splitext(args.pdb1)[0]}_icp.pdb')
