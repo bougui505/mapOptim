@@ -231,7 +231,8 @@ def assign_anchors(coords, coords_ref, dist_thr=None, return_perm=False):
         P = torch.zeros((n, n_ref))
         P[assignment, torch.arange(len(assignment))] = 1.
         P = P[:, :n]
-        P[:, P.sum(axis=0) == 0] = 1 / n
+        # P[:, P.sum(axis=0) == 0] = 1 / n
+        P = P[:, P.sum(axis=0) != 0]
         return assignment, sel, P
     else:
         return assignment, sel
@@ -322,6 +323,16 @@ def lstsq_fit(coords, coords_ref, dist_thr=1.9, ca_dist=3.8):
     return coords_out
 
 
+def get_resids(obj):
+    """
+    Return the list of resids for the given obj
+    """
+    myspace = {'resids': []}
+    cmd.iterate(obj, 'resids.append(resi)', space=myspace)
+    resids = np.int_(myspace['resids'])
+    return resids
+
+
 if __name__ == '__main__':
     import pymol.cmd as cmd
     import optimap
@@ -337,6 +348,7 @@ if __name__ == '__main__':
     parser.add_argument('--niter', type=int, help='Number of iterations (default: 100)',
                         default=100)
     parser.add_argument('--flex', type=float, help='Distance threshold for flexible fitting using least square (default=0, no least square flexible fitting)', default=0.)
+    parser.add_argument('--permute', default=False, help='Permute the coordinates of pdb1 to fit pdb2', action='store_true')
     parser.add_argument('--debug', default=False, help='Just run the doctest for debug purpose only', action='store_true')
     args = parser.parse_args()
 
@@ -364,6 +376,16 @@ if __name__ == '__main__':
     # cmd.save('out_align.pdb', selection='mod')
     # Try the ICP
     coords_out = icp(coords_in, coords_ref, device, args.niter, lstsq_fit_thr=args.flex)
+    if args.permute:
+        print(coords_out.shape)
+        _, _, P = assign_anchors(coords_out, coords_ref, return_perm=True, dist_thr=3.8)
+        coords_out = coords_out.T.mm(P).T
+        print(coords_out.shape, coords_ref.shape)
+        resids = torch.tensor(get_resids('mod'))
+        resids_out = torch.squeeze(resids[None, :].mm(P.to(torch.long))).numpy()
+        resids = resids.numpy()
+        for r in (set(resids) - set(resids_out)):
+            cmd.remove(f'mod and resi {r}')
     coords_out = coords_out.cpu().detach().numpy()
     cmd.load_coords(coords_out, 'mod')
     cmd.save(f'{os.path.splitext(args.pdb1)[0]}_icp.pdb', selection='mod')
