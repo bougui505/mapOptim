@@ -405,11 +405,11 @@ if __name__ == '__main__':
     if args.permute:
         _, sel, P = assign_anchors(coords_out, coords_ref, return_perm=True, dist_thr=3.8)
         coords_out = coords_out.T.mm(P).T
-        resids = torch.tensor(get_resids('mod'))
-        resids_out = torch.squeeze(resids[None, :].mm(P.to(torch.long))).numpy()
-        resids = resids.numpy()
-        for r in (set(resids) - set(resids_out)):
-            cmd.remove(f'mod and resi {r}')
+        torm = cmd.select('mod') - coords_out.shape[0]
+        resids = get_resids('mod')
+        chains = get_chain_seq('mod')
+        for i in range(torm):
+            cmd.remove(f'mod and resi {resids[i]} and chain {chains[i]}')
         resids_ref = get_resids('ref')[sel]
         chains_ref = get_chain_seq('ref')[sel]
         seq_ref = get_sequence('ref')[sel]
