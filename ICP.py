@@ -333,6 +333,29 @@ def get_resids(obj):
     return resids
 
 
+def get_sequence(obj):
+    aa1 = list("ACDEFGHIKLMNPQRSTVWY")
+    aa3 = "ALA CYS ASP GLU PHE GLY HIS ILE LYS LEU MET ASN PRO GLN ARG SER THR VAL TRP TYR".split()
+    aa123 = dict(zip(aa1, aa3))
+    # aa321 = dict(zip(aa3, aa1))
+    chains = cmd.get_chains(obj)
+    seq_cat = ''
+    for chain in chains:
+        seq = cmd.get_fastastr(f'{obj} and chain {chain}')
+        seq = seq.split()[1:]
+        seq = ''.join(seq)
+        seq_cat += seq
+    seq_cat = np.asarray([aa123[r] for r in seq_cat])
+    return seq_cat
+
+
+def get_chain_seq(obj):
+    myspace = {'chains': []}
+    cmd.iterate(obj, 'chains.append(chain)', space=myspace)
+    chains = np.asarray(myspace['chains'])
+    return chains
+
+
 if __name__ == '__main__':
     import pymol.cmd as cmd
     import optimap
@@ -376,14 +399,21 @@ if __name__ == '__main__':
     # cmd.save('out_align.pdb', selection='mod')
     # Try the ICP
     coords_out = icp(coords_in, coords_ref, device, args.niter, lstsq_fit_thr=args.flex)
+    resids_ref = None
+    chains_ref = None
+    seq_ref = None
     if args.permute:
-        _, _, P = assign_anchors(coords_out, coords_ref, return_perm=True, dist_thr=3.8)
+        _, sel, P = assign_anchors(coords_out, coords_ref, return_perm=True, dist_thr=3.8)
         coords_out = coords_out.T.mm(P).T
         resids = torch.tensor(get_resids('mod'))
         resids_out = torch.squeeze(resids[None, :].mm(P.to(torch.long))).numpy()
         resids = resids.numpy()
         for r in (set(resids) - set(resids_out)):
             cmd.remove(f'mod and resi {r}')
+        resids_ref = get_resids('ref')[sel]
+        chains_ref = get_chain_seq('ref')[sel]
+        seq_ref = get_sequence('ref')[sel]
     coords_out = coords_out.cpu().detach().numpy()
     optimap.write_pdb(obj='mod', coords=coords_out,
-                      outfilename=f'{os.path.splitext(args.pdb1)[0]}_icp.pdb')
+                      outfilename=f'{os.path.splitext(args.pdb1)[0]}_icp.pdb',
+                      resids=resids_ref, seq=seq_ref, chains=chains_ref)
