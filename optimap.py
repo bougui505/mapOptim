@@ -54,7 +54,7 @@ def get_coords(pdbfilename, object, device, selection=None):
 
 
 def permute(coords, weights):
-    out = coords.t().mm(weights).t()
+    out = coords.T.mm(weights).T
     # out = weights.mm(coords)
     # out = coords.t().mm(torch.nn.functional.softmax(weights, dim=1)).t()
     return out
@@ -161,7 +161,7 @@ def read_fasta(fasta_file):
     return seq
 
 
-def write_pdb(obj, coords, outfilename, seq=None, resids=None):
+def write_pdb(obj, coords, outfilename, seq=None, resids=None, chains=None):
     cmd.load_coords(coords, obj)
     if seq is not None:
         myspace = {}
@@ -171,6 +171,10 @@ def write_pdb(obj, coords, outfilename, seq=None, resids=None):
         myspace = {}
         myspace['resid_iter'] = iter(resids)
         cmd.alter(obj, 'resi=f"{resid_iter.__next__()}"', space=myspace)
+    if chains is not None:
+        myspace = {}
+        myspace['chain_iter'] = iter(chains)
+        cmd.alter(obj, 'chain=f"{chain_iter.__next__()}"', space=myspace)
     cmd.save(outfilename, selection=obj)
 
 
@@ -249,12 +253,14 @@ if __name__ == '__main__':
         anchors = get_coords(args.anchors, 'anchors', device)
     n = coords_in.shape[0]
     P = torch.eye(n)
-    for i in range(5):
+    coords_out = torch.clone(coords_in)
+    for i in range(1):
         print(f'################ Iteration {i+1} ################')
-        coords_out = torch.clone(coords_in)
         coords_out = minimize(coords_out, cmap_ref, device, args.niter, P_in=P)
-        coords_out = ICP.icp(coords_out, anchors, 'cpu', 10, lstsq_fit_thr=1.9)
-        _, _, P = ICP.assign_anchors(coords_in, coords_out, return_perm=True)
+        coords_out = ICP.icp(coords_out, anchors, 'cpu', 100, lstsq_fit_thr=1.9)
+        # _, _, P = ICP.assign_anchors(anchors, coords_out, return_perm=True, dist_thr=3.8)
+        # coords_out = torch.clone(anchors)
+    # coords_out = anchors.T.mm(P).T
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_optimap.pdb"
