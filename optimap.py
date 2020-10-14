@@ -106,7 +106,7 @@ def get_rmsd(A, B):
     return rmsd
 
 
-def minimize(coords, cmap_ref, device, n_iter, P_in=None, do_normalize_P=False, coords_ref=None):
+def minimize(coords, cmap_ref, device, n_iter, P_in=None, coords_ref=None):
     """
     - P: initial permutation matrix
     """
@@ -121,11 +121,7 @@ def minimize(coords, cmap_ref, device, n_iter, P_in=None, do_normalize_P=False, 
     n = coords.shape[0]
     for t in range(n_iter):
         optimizer.zero_grad()
-        if do_normalize_P:
-            P_norm = normalize_P(P, beta=0.1)
-        else:
-            P_norm = P
-        coords_pred = permute(coords, P_norm)
+        coords_pred = permute(coords, P)
         cmap_pred = get_cmap(coords_pred, device=device)
         loss = cmap_loss(cmap_pred, cmap_ref)
         loss.backward()
@@ -252,8 +248,8 @@ if __name__ == '__main__':
     else:
         anchors = get_coords(args.anchors, 'anchors', device)
     n = coords_in.shape[0]
-    P = torch.eye(n)
-    coords_out = torch.clone(coords_in)
+    _, _, P = ICP.assign_anchors(anchors, coords_in, dist_thr=3.8, return_perm=True)
+    coords_out = torch.clone(anchors)
     for i in range(1):
         print(f'################ Iteration {i+1} ################')
         coords_out = minimize(coords_out, cmap_ref, device, args.niter, P_in=P)
