@@ -257,7 +257,7 @@ if __name__ == '__main__':
     for i in range(1):
         print(f'################ Iteration {i+1} ################')
         coords_out = minimize(coords_out, cmap_ref, device, args.niter, P_in=P)
-        coords_out = ICP.icp(coords_out, anchors, 'cpu', 100, lstsq_fit_thr=1.9)
+        # coords_out = ICP.icp(coords_out, anchors, 'cpu', 100, lstsq_fit_thr=1.9)
         # _, _, P = ICP.assign_anchors(anchors, coords_out, return_perm=True, dist_thr=3.8)
         # coords_out = torch.clone(anchors)
     # coords_out = anchors.T.mm(P).T
