@@ -279,7 +279,7 @@ if __name__ == '__main__':
         coords_out = ICP.icp(coords_out, anchors, 'cpu', 100, lstsq_fit_thr=1.9)
         assignment, sel, P = ICP.assign_anchors(anchors, coords_out,
                                                 return_perm=True)
-        assignment, sel = ICP.assign_anchors(anchors, coords_out, dist_thr=1.)
+        assignment, sel = ICP.assign_anchors(anchors, coords_out, dist_thr=1.9)
         mask = torch.zeros_like(P)
         mask[assignment, :] = 1.  # Mask already assigned CA -> No optimization on the masked elements
         print(f"n_assigned: {len(assignment)}")
