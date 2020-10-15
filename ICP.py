@@ -78,9 +78,28 @@ def get_RMSD(A, B):
     return rmsd
 
 
-def assign_anchors(coords, coords_ref, dist_thr=None, return_perm=False):
+def get_topology(resids, chains):
+    """
+    Return the adjacency matrix encoding the topology of the object
+    - resids: list of resid of the anchors
+    - chains: list of chains per CA of the anchors
+    """
+    n = len(resids)
+    adjmat = np.zeros((n, n))
+    for i in range(1, n):
+        dr = resids[i] - resids[i - 1]
+        cr = chains[i] == chains[i - 1]
+        if dr == 1 and cr:
+            adjmat[i, i - 1] = 1.
+            adjmat[i - 1, i] = 1.
+    return adjmat
+
+
+def assign_anchors(coords, coords_ref, dist_thr=None, return_perm=False,
+                   cdist=None):
     """
     Assign the closest anchors with coords coords_ref
+    - cdist: precomputed distance matrix between coords and coords_ref
 
     # Test with equal shape for coords and coords_ref
     >>> coords_ref = torch.tensor([[0., 0., 0.], [1., 2., 3.], [4., 5., 6.], [7., 8., 9.]])
@@ -184,36 +203,13 @@ def assign_anchors(coords, coords_ref, dist_thr=None, return_perm=False):
     >>> get_RMSD(coords_ordered, coords_ref[sel])
     tensor(0.)
     >>> coords.T.mm(P).T
-    tensor([[ 1.0000,  2.0000,  3.0000],
-            [ 7.0000,  8.0000,  9.0000],
-            [10.0000, 11.0000, 12.0000],
-            [29.2500, 29.7500, 30.2500]])
-
-    # >>> assignment
-    # tensor([0, 3, 1])
-
-    # >>> sel
-    # tensor([1, 2, 3])
-    # >>> coords_ordered = coords[assignment]
-    # >>> get_RMSD(coords_ordered, coords_ref[sel])
-    # tensor(0.)
-
-    # >>> assignment, sel, P = assign_anchors(coords, coords_ref, dist_thr=4., return_perm=True)
-    # >>> assignment
-    # tensor([0, 3, 1])
-    # >>> P
-    # tensor([[0.2500, 1.0000, 0.0000, 0.0000],
-    #         [0.2500, 0.0000, 0.0000, 1.0000],
-    #         [0.2500, 0.0000, 0.0000, 0.0000],
-    #         [0.2500, 0.0000, 1.0000, 0.0000]])
-
-    # >>> coords_ordered = coords.T.mm(P).T
-    # >>> get_RMSD(coords_ordered[sel], coords_ref[sel])
-    # tensor(0.)
-
+    tensor([[ 1.,  2.,  3.],
+            [ 7.,  8.,  9.],
+            [10., 11., 12.]])
     """
-    cdist = torch.cdist(coords, coords_ref)
-    cdist = cdist.cpu().numpy()
+    if cdist is None:
+        cdist = torch.cdist(coords, coords_ref)
+        cdist = cdist.cpu().numpy()
     row_ind, col_ind = scipy.optimize.linear_sum_assignment(cdist)
     if dist_thr is not None:
         distances = cdist[row_ind, col_ind]
