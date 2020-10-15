@@ -358,7 +358,6 @@ def get_chain_seq(obj):
 
 
 if __name__ == '__main__':
-    import pymol.cmd as cmd
     import optimap
     import doctest
     import os
