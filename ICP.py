@@ -9,6 +9,7 @@ import sys
 import scipy.optimize
 import numpy as np
 import torch
+import pymol.cmd as cmd
 
 
 def print_progress(instr):
