@@ -68,19 +68,25 @@ def minsum(v, axis=1, n=2., eps=1e-6):
     return w
 
 
-def anchor_loss(coords, anchors):
-    cdist = torch.cdist(coords - coords.mean(axis=0), anchors - anchors.mean(axis=0))
+def anchor_loss(coords, anchors, dist_thr=3.8):
+    cdist = torch.cdist(coords, anchors)
     mindists = torch.min(cdist, axis=1)[0]
-    # mindists = minsum(cdist, axis=1)
+    # mindists = torch.clamp(mindists, max=dist_thr)
+    mindists[mindists > dist_thr] = 0.1
     loss = (mindists**2).mean()
     return loss
 
 
-def cmap_loss(cmap_pred, cmap_true, w0=0.05):
+def cmap_loss(cmap_pred, cmap_true, wc=1., w0=1.):
+    """
+    wc: weight of contact
+    w0: weight of non contact
+    """
     cmap_pred = cmap_pred.flatten()
     cmap_true = cmap_true.flatten()
-    bceloss = torch.nn.BCELoss(weight=(cmap_true + w0 * torch.ones_like(cmap_true)))
-    # bceloss = torch.nn.BCELoss(weight=cmap_true)
+    # bceloss = torch.nn.BCELoss(weight=(cmap_true + w0 * torch.ones_like(cmap_true)))
+    weight = cmap_true * wc + (1. - cmap_true) * w0
+    bceloss = torch.nn.BCELoss(weight=weight)
     output = bceloss(cmap_pred, cmap_true)
     return output
 
@@ -97,7 +103,8 @@ def is_normed(P, eps=1e-3):
 
 
 def entropy_loss(P, eps=1e-3):
-    loss = -(P * torch.log(P + eps)).mean()
+    P_clamp = torch.clamp(P, min=eps, max=1.)
+    loss = -(P_clamp * torch.log(P_clamp)).mean()
     return loss
 
 
@@ -106,9 +113,14 @@ def get_rmsd(A, B):
     return rmsd
 
 
-def minimize(coords, cmap_ref, device, n_iter, P_in=None, coords_ref=None):
+def minimize(coords, cmap_ref, device, n_iter, P_in=None, mask=None,
+             wc=1., w0=0., wanchor=0.):
     """
     - P: initial permutation matrix
+    - mask: no optimization on the mask elements
+    - wc: weight of contact
+    - w0: weight of non contact
+    - wanchor: weight of anchor loss
     """
     n = coords.shape[0]
     # Permutation matrix
@@ -117,21 +129,24 @@ def minimize(coords, cmap_ref, device, n_iter, P_in=None, coords_ref=None):
     else:
         # P = torch.tensor(P_in, requires_grad=True, device=device)
         P = P_in.clone().detach().to(device).requires_grad_(True)
+    P0 = torch.clone(P)
     optimizer = torch.optim.Adam([P, ], lr=1e-3)
     n = coords.shape[0]
     for t in range(n_iter):
         optimizer.zero_grad()
+        if mask is not None:
+            P_masked = P * (1 - mask) + P0 * mask
+            coords_pred = permute(coords, P_masked)
         coords_pred = permute(coords, P)
         cmap_pred = get_cmap(coords_pred, device=device)
-        loss = cmap_loss(cmap_pred, cmap_ref)
+        c_loss = cmap_loss(cmap_pred, cmap_ref, wc=wc, w0=w0)
+        loss = c_loss
+        a_loss = anchor_loss(coords_pred, anchors)
+        loss += wanchor * a_loss
         loss.backward()
         optimizer.step()
         if t % 100 == 99:
-            if coords_ref is not None:
-                rmsd = get_rmsd(coords_pred, coords_ref)
-                print_progress(f'{t+1}/{n_iter}: L={loss}, rmsd={rmsd}')
-            else:
-                print_progress(f'{t+1}/{n_iter}: L={loss}')
+            print_progress(f'{t+1}/{n_iter}: L={loss:.5f}, Anchor={torch.sqrt(a_loss):.4f}, cmap_loss:{c_loss:.5f}')
     sys.stdout.write('\n')
     print("---")
     # numpy.save('permutation.npy', P_norm.cpu().detach().numpy())
@@ -249,14 +264,25 @@ if __name__ == '__main__':
         anchors = get_coords(args.anchors, 'anchors', device)
     n = coords_in.shape[0]
     _, _, P = ICP.assign_anchors(anchors, coords_in, dist_thr=3.8, return_perm=True)
-    coords_out = torch.clone(anchors)
-    for i in range(1):
+    mask = None
+    n_step = 2
+    wc = 1.
+    w0 = 1.
+    wanchor = 0.001
+    for i in range(n_step):
         print(f'################ Iteration {i+1} ################')
-        coords_out = minimize(coords_out, cmap_ref, device, args.niter, P_in=P)
+        # wanchor = 0.001 * min(1., i)
+        print(f'wc={wc}, w0={w0}, wanchor={wanchor}')
+        coords_out = minimize(anchors, cmap_ref, device, args.niter, P_in=P,
+                              mask=mask, wc=wc, w0=w0, wanchor=wanchor)
+        coords_out = coords_out.cpu().detach()
         coords_out = ICP.icp(coords_out, anchors, 'cpu', 100, lstsq_fit_thr=1.9)
-        # _, _, P = ICP.assign_anchors(anchors, coords_out, return_perm=True, dist_thr=3.8)
-        # coords_out = torch.clone(anchors)
-    # coords_out = anchors.T.mm(P).T
+        assignment, sel, P = ICP.assign_anchors(anchors, coords_out,
+                                                return_perm=True)
+        assignment, sel = ICP.assign_anchors(anchors, coords_out, dist_thr=1.)
+        mask = torch.zeros_like(P)
+        mask[assignment, :] = 1.  # Mask already assigned CA -> No optimization on the masked elements
+        print(f"n_assigned: {len(assignment)}")
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_optimap.pdb"
