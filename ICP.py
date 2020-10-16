@@ -210,10 +210,13 @@ def assign_anchors(coords, coords_ref, dist_thr=None, return_perm=False,
     if cdist is None:
         cdist = torch.cdist(coords, coords_ref)
         cdist = cdist.cpu().numpy()
+        if dist_thr is not None:
+            cdist[cdist > dist_thr] = 9999.99
     row_ind, col_ind = scipy.optimize.linear_sum_assignment(cdist)
     if dist_thr is not None:
         distances = cdist[row_ind, col_ind]
-        sel = distances <= dist_thr
+        # sel = distances <= dist_thr
+        sel = distances < 9999.99
         row_ind = row_ind[sel]
         col_ind = col_ind[sel]
     n = coords.shape[0]
@@ -312,10 +315,11 @@ def lstsq_fit(coords, coords_ref, dist_thr=1.9, ca_dist=3.8):
     sel = sel[toposel]
     assignment = assignment[toposel]
     ##########
-    X, _ = torch.lstsq(coords_ref[assignment].T, coords[sel].T)
-    coords_out[sel] = (coords[sel].T.mm(X[:n])).T
-    n_assigned = len(sel)
-    print(f"lstsq_fit: n_assigned: {n_assigned}/{n} at less than {dist_thr} Å")
+    if coords[sel].shape[0] > 3:
+        X, _ = torch.lstsq(coords_ref[assignment].T, coords[sel].T)
+        coords_out[sel] = (coords[sel].T.mm(X[:n])).T
+        n_assigned = len(sel)
+        print(f"lstsq_fit: n_assigned: {n_assigned}/{n} at less than {dist_thr} Å")
     coords_out = coords_out.to(device)
     return coords_out
 
