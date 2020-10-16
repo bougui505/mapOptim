@@ -316,8 +316,11 @@ if __name__ == '__main__':
     anchors[:n_assigned] = anchors[assignment]
     anchors[n_assigned:] = anchors[unassigned]
     anchors = anchors.cpu().detach().numpy()
-    chains_anchors = ['A', ] * n_assigned
-    chains_anchors.extend(['U', ] * n_unassigned)
+    if args.chain is not None:
+        chains_anchors = [args.chain, ] * n_assigned
+    else:
+        chains_anchors = ['A', ] * n_assigned
+    chains_anchors.extend(['0', ] * n_unassigned)
     seq_anchors = list(numpy.asarray(seq)[sel])
     seq_anchors.extend(['ALA', ] * n_unassigned)
     resids_anchors = list(numpy.asarray(resids)[sel])
