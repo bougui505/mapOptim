@@ -223,8 +223,12 @@ if __name__ == '__main__':
     parser.add_argument('--pdb', type=str, help='Protein structure to optimize')
     parser.add_argument('--anchors', type=str, help='PDB file containing the coordinates to anchor the model on. If not given, the pdb file given with the --pdb option is taken.')
     parser.add_argument('--cmap', type=str, help='npy file of the contact map')
-    parser.add_argument('--niter', type=int, help='Number of iteration for optimizer (default: 10000)',
-                        default=10000)
+    parser.add_argument('--niter', type=int, help='Number of iteration for optimizer (default: 1000)',
+                        default=1000)
+    parser.add_argument('--nstep', type=int, help='Maximum number of optimap step (default: 10). An optimap step is one step of coordinate optimization and one step of ICP',
+                        default=10)
+    parser.add_argument('--icp', type=int, help='Number of iteration for ICP (default: 100)',
+                        default=100)
     parser.add_argument('--pdbref', type=str, help='Generate a npy file with the contact map build from the pdb and exit')
     parser.add_argument('--seq', type=str, help='Fasta file with the sequence to write in the output pdb file')
     parser.add_argument('--resids', type=str, help='column text file with the residue numbering')
@@ -264,7 +268,7 @@ if __name__ == '__main__':
     n = coords_in.shape[0]
     _, _, P = ICP.assign_anchors(anchors, coords_in, dist_thr=3.8, return_perm=True)
     mask = None
-    n_step = 10
+    n_step = args.nstep
     wc = 1.
     w0 = 1.
     wanchor = 0.001
@@ -276,7 +280,7 @@ if __name__ == '__main__':
         coords_out = minimize(anchors, cmap_ref, device, args.niter, P_in=P,
                               mask=mask, wc=wc, w0=w0, wanchor=wanchor)
         coords_out = coords_out.cpu().detach()
-        coords_out = ICP.icp(coords_out, anchors, 'cpu', 100, lstsq_fit_thr=1.9)
+        coords_out = ICP.icp(coords_out, anchors, 'cpu', args.icp, lstsq_fit_thr=0)
         assignment, sel, P = ICP.assign_anchors(anchors, coords_out,
                                                 return_perm=True)
         assignment, sel = ICP.assign_anchors(anchors, coords_out, dist_thr=1.9)
