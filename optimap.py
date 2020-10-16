@@ -45,9 +45,11 @@ def get_cmap(coords, device, threshold=8., ca_switch=False, dist_ca=3.8, sigma_c
 def get_coords(pdbfilename, object, device, selection=None):
     if selection is None:
         selection = f'{object} and name CA'
+    else:
+        selection = f'{object} and name CA and {selection}'
     cmd.load(pdbfilename, object=object)
-    cmd.remove(f'(not name CA) and {object}')
-    coords = cmd.get_coords(selection=selection)
+    cmd.remove(f'not ({selection}) and {object}')
+    coords = cmd.get_coords(selection=object)
     coords = torch.from_numpy(coords)
     coords = coords.to(device)
     return coords
@@ -221,6 +223,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Model optimization based on contact map')
     parser.add_argument('--pdb', type=str, help='Protein structure to optimize')
+    parser.add_argument('--chain', type=str, help='Chain to select from the pdb given by --pdb')
     parser.add_argument('--anchors', type=str, help='PDB file containing the coordinates to anchor the model on. If not given, the pdb file given with the --pdb option is taken.')
     parser.add_argument('--cmap', type=str, help='npy file of the contact map')
     parser.add_argument('--niter', type=int, help='Number of iteration for optimizer (default: 1000)',
@@ -257,14 +260,19 @@ if __name__ == '__main__':
     cmap_ref = torch.from_numpy(cmap_ref)
     cmap_ref = cmap_ref.float()
     cmap_ref = cmap_ref.to(device)
-    coords_in = get_coords(args.pdb, 'mod', device)
+    if args.chain is None:
+        coords_in = get_coords(args.pdb, 'mod', device)
+    else:
+        coords_in = get_coords(args.pdb, 'mod', device, selection=f'chain {args.chain}')
     n = coords_in.shape[0]
     n_cmap = cmap_ref.shape[0]
     coords_in = fix_coords_len('mod', offset=n_cmap - n, device=device)
     if args.anchors is None:
-        anchors = torch.clone(coords_in)
+        anchors = get_coords(args.pdb, 'anchors', device)
     else:
         anchors = get_coords(args.anchors, 'anchors', device)
+    print(f'Number of model CA: {coords_in.shape[0]}')
+    print(f'Number of anchor CA: {anchors.shape[0]}')
     n = coords_in.shape[0]
     _, _, P = ICP.assign_anchors(anchors, coords_in, dist_thr=3.8, return_perm=True)
     mask = None
@@ -301,7 +309,6 @@ if __name__ == '__main__':
     # print('################ Permute anchors ################')
     assignment, sel, P = ICP.assign_anchors(anchors, coords_out,
                                             return_perm=True, dist_thr=3.8)
-    anchors_P = anchors.T.mm(P).T
     n_assigned = len(assignment)
     unassigned = list(set(range(len(anchors))) - set(list(assignment)))
     unassigned.sort()
@@ -315,12 +322,12 @@ if __name__ == '__main__':
     seq_anchors.extend(['ALA', ] * n_unassigned)
     resids_anchors = list(numpy.asarray(resids)[sel])
     resids_anchors.extend(range(n_unassigned))
-    outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_anchors_optimap.pdb"
+    outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_{args.chain}_anchors_optimap.pdb"
     write_pdb(obj='anchors', coords=anchors, outfilename=outpdbfilename,
               chains=chains_anchors, seq=seq_anchors, resids=resids_anchors)
     # print(f'#################################################')
     coords_out = coords_out.cpu().detach().numpy()
-    outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_optimap.pdb"
+    outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_{args.chain}_optimap.pdb"
     write_pdb(obj='mod', coords=coords_out, outfilename=outpdbfilename, seq=seq, resids=resids)
     cmap_in = get_cmap(coords_in, device='cpu')
     plt.matshow(cmap_in.cpu().numpy())
