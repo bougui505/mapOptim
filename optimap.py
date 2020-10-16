@@ -264,10 +264,11 @@ if __name__ == '__main__':
     n = coords_in.shape[0]
     _, _, P = ICP.assign_anchors(anchors, coords_in, dist_thr=3.8, return_perm=True)
     mask = None
-    n_step = 2
+    n_step = 10
     wc = 1.
     w0 = 1.
     wanchor = 0.001
+    n_assigned_best = 0
     for i in range(n_step):
         print(f'################ Iteration {i+1} ################')
         # wanchor = 0.001 * min(1., i)
@@ -281,7 +282,17 @@ if __name__ == '__main__':
         assignment, sel = ICP.assign_anchors(anchors, coords_out, dist_thr=1.9)
         mask = torch.zeros_like(P)
         mask[assignment, :] = 1.  # Mask already assigned CA -> No optimization on the masked elements
-        print(f"n_assigned: {len(assignment)}")
+        n_assigned = len(assignment)
+        print(f"n_assigned: {n_assigned}")
+        if n_assigned > n_assigned_best:
+            n_assigned_best = n_assigned
+            coords_out_best = coords_out
+        else:
+            print(f'#################################################')
+            print('Assignment converged')
+            print(f"n_assigned: {n_assigned_best}")
+            coords_out = coords_out_best
+            break
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     coords_out = coords_out.cpu().detach().numpy()
     outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_optimap.pdb"
