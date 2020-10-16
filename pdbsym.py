@@ -134,7 +134,7 @@ if __name__ == '__main__':
         seqhash = md5sum(seq)
         seqhashes.append(seqhash)
     if args.apply is None:
-        outsymfile = f'{os.path.splitext(args.pdb)[0]}_sym.npz'
+        outsymfile = f'{os.path.splitext(args.pdb)[0]}.sym.npz'
         find_symmetry(seqhashes, chains, outsymfile)
     else:
         symm = numpy.load(args.apply)
