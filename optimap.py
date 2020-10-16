@@ -298,6 +298,27 @@ if __name__ == '__main__':
             coords_out = coords_out_best
             break
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
+    # print('################ Permute anchors ################')
+    assignment, sel, P = ICP.assign_anchors(anchors, coords_out,
+                                            return_perm=True, dist_thr=3.8)
+    anchors_P = anchors.T.mm(P).T
+    n_assigned = len(assignment)
+    unassigned = list(set(range(len(anchors))) - set(list(assignment)))
+    unassigned.sort()
+    n_unassigned = len(unassigned)
+    anchors[:n_assigned] = anchors[assignment]
+    anchors[n_assigned:] = anchors[unassigned]
+    anchors = anchors.cpu().detach().numpy()
+    chains_anchors = ['A', ] * n_assigned
+    chains_anchors.extend(['U', ] * n_unassigned)
+    seq_anchors = list(numpy.asarray(seq)[sel])
+    seq_anchors.extend(['ALA', ] * n_unassigned)
+    resids_anchors = list(numpy.asarray(resids)[sel])
+    resids_anchors.extend(range(n_unassigned))
+    outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_anchors_optimap.pdb"
+    write_pdb(obj='anchors', coords=anchors, outfilename=outpdbfilename,
+              chains=chains_anchors, seq=seq_anchors, resids=resids_anchors)
+    # print(f'#################################################')
     coords_out = coords_out.cpu().detach().numpy()
     outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_optimap.pdb"
     write_pdb(obj='mod', coords=coords_out, outfilename=outpdbfilename, seq=seq, resids=resids)
