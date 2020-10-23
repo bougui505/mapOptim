@@ -89,7 +89,7 @@ for r in sel:
             cmap[ind + 1, ind] = 0.
 
 print(f'Contact map shape: {cmap.shape}')
-outbasename = os.path.splitext(args.cmap)[0]
+outbasename = os.path.split(os.path.splitext(args.cmap)[0])[1]
 numpy.save(f'{outbasename}.npy', cmap)
 numpy.save(f'{outbasename}.top.npy', cmap.diagonal(offset=1))
 plt.matshow(cmap)
