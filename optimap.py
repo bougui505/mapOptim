@@ -139,7 +139,8 @@ def minimize(coords, cmap_ref, device, n_iter, P_in=None, mask=None,
         if mask is not None:
             P_masked = P * (1 - mask) + P0 * mask
             coords_pred = permute(coords, P_masked)
-        coords_pred = permute(coords, P)
+        else:
+            coords_pred = permute(coords, P)
         cmap_pred = get_cmap(coords_pred, device=device)
         c_loss = cmap_loss(cmap_pred, cmap_ref, wc=wc, w0=w0)
         a_loss = anchor_loss(coords_pred, anchors)
@@ -287,7 +288,7 @@ if __name__ == '__main__':
         # wanchor = 0.001 * min(1., i)
         print(f'wc={wc}, w0={w0}, wanchor={wanchor}')
         coords_out = minimize(anchors, cmap_ref, device, args.niter, P_in=P,
-                              mask=mask, wc=wc, w0=w0, wanchor=wanchor)
+                              mask=None, wc=wc, w0=w0, wanchor=wanchor)
         coords_out = coords_out.cpu().detach()
         coords_out = ICP.icp(coords_out, anchors, 'cpu', args.icp, lstsq_fit_thr=0)
         assignment, sel, P = ICP.assign_anchors(anchors, coords_out,
