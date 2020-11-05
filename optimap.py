@@ -276,7 +276,7 @@ if __name__ == '__main__':
     print(f'Number of anchor CA: {anchors.shape[0]}')
     print(f'Shape of targeted cmap: {cmap_ref.shape}')
     n = coords_in.shape[0]
-    _, _, P = ICP.assign_anchors(anchors, coords_in, dist_thr=3.8, return_perm=True)
+    _, _, P = ICP.assign_anchors(anchors, coords_in, dist_thr=None, return_perm=True)
     mask = None
     n_step = args.nstep
     wc = 1.
