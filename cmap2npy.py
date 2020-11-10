@@ -36,7 +36,7 @@ def parse_selection(selection_string):
 
 def read_ss(infile):
     data = numpy.genfromtxt(infile, dtype=str)
-    resids = numpy.int_(data[:, 0])
+    resids = numpy.int_(numpy.float_(data[:, 0]))
     hec = numpy.float_(data[:, 3:])  # propensity for H, E and C class as in DSSP
     ss_mapping = dict(zip(resids, hec))
     return ss_mapping
