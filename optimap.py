@@ -236,6 +236,7 @@ if __name__ == '__main__':
     parser.add_argument('--pdbref', type=str, help='Generate a npy file with the contact map build from the pdb and exit')
     parser.add_argument('--seq', type=str, help='Fasta file with the sequence to write in the output pdb file')
     parser.add_argument('--resids', type=str, help='column text file with the residue numbering')
+    parser.add_argument('-o', '--output', type=str, help='Output files basename')
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
@@ -327,17 +328,21 @@ if __name__ == '__main__':
     seq_anchors.extend(['ALA', ] * n_unassigned)
     resids_anchors = list(numpy.asarray(resids)[sel])
     resids_anchors.extend(range(n_unassigned))
-    outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_{args.chain}_anchors_optimap.pdb"
+    if args.output is None:
+        outbasename = f"{os.path.splitext(args.pdb)[0]}_{args.chain}"
+    else:
+        outbasename = args.output
+    outpdbfilename = f"{outbasename}_anchors_optimap.pdb"
     write_pdb(obj='anchors', coords=anchors, outfilename=outpdbfilename,
               chains=chains_anchors, seq=seq_anchors, resids=resids_anchors)
     # print(f'#################################################')
     coords_out = coords_out.cpu().detach().numpy()
-    outpdbfilename = f"{os.path.splitext(args.pdb)[0]}_{args.chain}_optimap.pdb"
+    outpdbfilename = f"{outbasename}_optimap.pdb"
     write_pdb(obj='mod', coords=coords_out, outfilename=outpdbfilename, seq=seq, resids=resids)
     cmap_in = get_cmap(coords_in, device='cpu')
     plt.matshow(cmap_in.cpu().numpy())
-    plt.savefig('cmap_in.png')
+    plt.savefig(f'{outbasename}_cmap_in.png')
     plt.matshow(cmap_ref.cpu().numpy())
-    plt.savefig('cmap_ref.png')
+    plt.savefig(f'{outbasename}_cmap_ref.png')
     plt.matshow(cmap_out)
-    plt.savefig('cmap_out.png')
+    plt.savefig(f'{outbasename}_cmap_out.png')
