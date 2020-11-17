@@ -143,12 +143,18 @@ def minimize(coords, cmap_ref, device, n_iter, P_in=None, mask=None,
             coords_pred = permute(coords, P)
         cmap_pred = get_cmap(coords_pred, device=device)
         c_loss = cmap_loss(cmap_pred, cmap_ref, wc=wc, w0=w0)
-        a_loss = anchor_loss(coords_pred, anchors)
-        loss = c_loss + wanchor * a_loss
+        if wanchor > 0:
+            a_loss = anchor_loss(coords_pred, anchors)
+            loss = c_loss + wanchor * a_loss
+        else:
+            loss = c_loss
         loss.backward()
         optimizer.step()
         if t % 100 == 99:
-            print_progress(f'{t+1}/{n_iter}: L={loss:.5f}, Anchor={a_loss:.4f}, cmap_loss:{c_loss:.5f}, wanchor={wanchor}')
+            if wanchor > 0:
+                print_progress(f'{t+1}/{n_iter}: L={loss:.5f}, Anchor={a_loss:.4f}, cmap_loss:{c_loss:.5f}, wanchor={wanchor}')
+            else:
+                print_progress(f'{t+1}/{n_iter}: L={loss:.5f}, cmap_loss:{c_loss:.5f}')
     sys.stdout.write('\n')
     print("---")
     # numpy.save('permutation.npy', P_norm.cpu().detach().numpy())
