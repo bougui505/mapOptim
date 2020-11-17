@@ -132,8 +132,9 @@ def minimize(coords, cmap_ref, device, n_iter, P_in=None, mask=None,
         # P = torch.tensor(P_in, requires_grad=True, device=device)
         P = P_in.clone().detach().to(device).requires_grad_(True)
     P0 = torch.clone(P)
-    optimizer = torch.optim.Adam([P, ], lr=1e-3)
+    optimizer = torch.optim.Adam([P, ], lr=1e-6)
     n = coords.shape[0]
+    loss_prev = 0
     for t in range(n_iter):
         optimizer.zero_grad()
         if mask is not None:
@@ -151,10 +152,16 @@ def minimize(coords, cmap_ref, device, n_iter, P_in=None, mask=None,
         loss.backward()
         optimizer.step()
         if t % 100 == 99:
+            delta_loss = loss - loss_prev
+            loss_prev = loss
+            if abs(delta_loss) < 1e-5:
+                print()
+                print('Early Stopping')
+                break
             if wanchor > 0:
-                print_progress(f'{t+1}/{n_iter}: L={loss:.5f}, Anchor={a_loss:.4f}, cmap_loss:{c_loss:.5f}, wanchor={wanchor}')
+                print_progress(f'{t+1}/{n_iter}: L={loss:.5f}, Anchor={a_loss:.4f}, cmap_loss:{c_loss:.5f}, wanchor={wanchor}, delta_loss={delta_loss:.5f}')
             else:
-                print_progress(f'{t+1}/{n_iter}: L={loss:.5f}, cmap_loss:{c_loss:.5f}')
+                print_progress(f'{t+1}/{n_iter}: L={loss:.5f}, cmap_loss:{c_loss:.5f}, delta_loss={delta_loss:.5f}')
     sys.stdout.write('\n')
     print("---")
     # numpy.save('permutation.npy', P_norm.cpu().detach().numpy())
