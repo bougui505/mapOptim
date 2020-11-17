@@ -291,50 +291,52 @@ if __name__ == '__main__':
         coords_out = minimize(anchors, cmap_ref, device, args.niter, P_in=P,
                               mask=None, wc=wc, w0=w0, wanchor=wanchor)
         coords_out = coords_out.cpu().detach()
-        coords_out = ICP.icp(coords_out, anchors, 'cpu', args.icp, lstsq_fit_thr=0)
-        assignment, sel, P = ICP.assign_anchors(anchors, coords_out,
-                                                return_perm=True)
-        assignment, sel = ICP.assign_anchors(anchors, coords_out, dist_thr=1.9)
-        mask = torch.zeros_like(P)
-        mask[assignment, :] = 1.  # Mask already assigned CA -> No optimization on the masked elements
-        n_assigned = len(assignment)
-        print(f"n_assigned: {n_assigned}")
-        if n_assigned > n_assigned_best:
-            n_assigned_best = n_assigned
-            coords_out_best = coords_out
-        else:
-            print(f'#################################################')
-            print('Assignment converged')
-            print(f"n_assigned: {n_assigned_best}")
-            coords_out = coords_out_best
-            break
+        if args.icp > 0:
+            coords_out = ICP.icp(coords_out, anchors, 'cpu', args.icp, lstsq_fit_thr=0)
+            assignment, sel, P = ICP.assign_anchors(anchors, coords_out,
+                                                    return_perm=True)
+            assignment, sel = ICP.assign_anchors(anchors, coords_out, dist_thr=1.9)
+            mask = torch.zeros_like(P)
+            mask[assignment, :] = 1.  # Mask already assigned CA -> No optimization on the masked elements
+            n_assigned = len(assignment)
+            print(f"n_assigned: {n_assigned}")
+            if n_assigned > n_assigned_best:
+                n_assigned_best = n_assigned
+                coords_out_best = coords_out
+            else:
+                print(f'#################################################')
+                print('Assignment converged')
+                print(f"n_assigned: {n_assigned_best}")
+                coords_out = coords_out_best
+                break
     cmap_out = get_cmap(coords_out, device='cpu').detach().numpy()
     # print('################ Permute anchors ################')
-    assignment, sel, P = ICP.assign_anchors(anchors, coords_out,
-                                            return_perm=True, dist_thr=3.8)
-    n_assigned = len(assignment)
-    unassigned = list(set(range(len(anchors))) - set(list(assignment)))
-    unassigned.sort()
-    n_unassigned = len(unassigned)
-    anchors[:n_assigned] = anchors[assignment]
-    anchors[n_assigned:] = anchors[unassigned]
-    anchors = anchors.cpu().detach().numpy()
-    if args.chain is not None:
-        chains_anchors = [args.chain, ] * n_assigned
-    else:
-        chains_anchors = ['A', ] * n_assigned
-    chains_anchors.extend(['0', ] * n_unassigned)
-    seq_anchors = list(numpy.asarray(seq)[sel])
-    seq_anchors.extend(['ALA', ] * n_unassigned)
-    resids_anchors = list(numpy.asarray(resids)[sel])
-    resids_anchors.extend(range(n_unassigned))
     if args.output is None:
         outbasename = f"{os.path.splitext(args.pdb)[0]}_{args.chain}"
     else:
         outbasename = args.output
-    outpdbfilename = f"{outbasename}_anchors_optimap.pdb"
-    write_pdb(obj='anchors', coords=anchors, outfilename=outpdbfilename,
-              chains=chains_anchors, seq=seq_anchors, resids=resids_anchors)
+    if args.icp > 0:
+        assignment, sel, P = ICP.assign_anchors(anchors, coords_out,
+                                                return_perm=True, dist_thr=3.8)
+        n_assigned = len(assignment)
+        unassigned = list(set(range(len(anchors))) - set(list(assignment)))
+        unassigned.sort()
+        n_unassigned = len(unassigned)
+        anchors[:n_assigned] = anchors[assignment]
+        anchors[n_assigned:] = anchors[unassigned]
+        anchors = anchors.cpu().detach().numpy()
+        if args.chain is not None:
+            chains_anchors = [args.chain, ] * n_assigned
+        else:
+            chains_anchors = ['A', ] * n_assigned
+        chains_anchors.extend(['0', ] * n_unassigned)
+        seq_anchors = list(numpy.asarray(seq)[sel])
+        seq_anchors.extend(['ALA', ] * n_unassigned)
+        resids_anchors = list(numpy.asarray(resids)[sel])
+        resids_anchors.extend(range(n_unassigned))
+        outpdbfilename = f"{outbasename}_anchors_optimap.pdb"
+        write_pdb(obj='anchors', coords=anchors, outfilename=outpdbfilename,
+                  chains=chains_anchors, seq=seq_anchors, resids=resids_anchors)
     # print(f'#################################################')
     coords_out = coords_out.cpu().detach().numpy()
     outpdbfilename = f"{outbasename}_optimap.pdb"
